@@ -1,0 +1,3 @@
+[submodule "eval-word-vectors"]
+	path = eval-word-vectors
+	url = https://github.com/mfaruqui/eval-word-vectors
