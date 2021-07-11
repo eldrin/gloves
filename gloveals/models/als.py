@@ -47,6 +47,7 @@ class GloVeALS:
         Et_ = E_.T.tocsr()
         if compute_loss:
             self.losses = [np.mean(C_.data * E_.data**2)]
+        healthy = True
         with tqdm(total=self.n_iters, disable=not verbose) as prog:
             for n in range(self.n_iters):
                 E_ = Et_.T.tocsr()
@@ -59,13 +60,19 @@ class GloVeALS:
                     Ct_.data, Et_.data, Xt_.indices, Xt_.indptr,
                     H, W, bj, bi, self.l2
                 )
+                if self._is_unhealthy(W, H, bi, bj):
+                    healthy = False
+                    print('[ERROR] Training failed! nan or inf found')
+                    break
+                    
                 if compute_loss:
                     self.losses.append(np.mean(C_.data * E_.data**2))
                 prog.update()
 
-        self.embeddings_ = {
-            'W': W, 'H': H, 'bi': bi, 'bj': bj
-        }
+        if healthy:
+            self.embeddings_ = {
+                'W': W, 'H': H, 'bi': bi, 'bj': bj
+            }
 
     def score(self, X, weighted=True):
         """
@@ -91,7 +98,19 @@ class GloVeALS:
             return np.mean(C_.data * (E_.data)**2) 
         else:
             # uniform mse
-            return np.mean((E_.data)**2) 
+            return np.mean((E_.data)**2)
+
+    @staticmethod
+    def _is_unhealthy(*params):
+        """
+        """
+        # check nan
+        is_nan = np.any([np.any(np.isnan(param)) for param in params])
+
+        # check inf
+        is_inf = np.any([np.any(np.isnan(param)) for param in params])
+
+        return any([is_nan, is_inf])
 
 
 @nb.njit(
