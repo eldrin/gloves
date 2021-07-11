@@ -16,6 +16,7 @@ from functools import partial
 import pickle as pkl
 
 import numpy as np
+from scipy import sparse as sp
 from scipy.stats import kendalltau
 
 import skopt
