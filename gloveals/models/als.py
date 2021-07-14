@@ -48,7 +48,7 @@ class GloVeALS:
         if compute_loss:
             self.losses = [np.mean(C_.data * E_.data**2)]
         healthy = True
-        with tqdm(total=self.n_iters, disable=not verbose) as prog:
+        with tqdm(total=self.n_iters, ncols=80, disable=not verbose) as prog:
             for n in range(self.n_iters):
                 E_ = Et_.T.tocsr()
                 update_factor(
