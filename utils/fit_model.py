@@ -73,9 +73,9 @@ EVAL_DATA_PATH = join(
 # setup the search space
 SPACE = [
     Integer(1, 6, name='window_size_factor2'),
-    Integer(2, 8, name='n_components_log2'),
-    Real(1e-6, 2e+1, 'log_uniform', name='l2'),
-    Real(1e-6, 1e-1, 'log_uniform', name='init'),
+    Integer(4, 10, name='n_components_log2'),
+    Real(1e-8, 2e+1, 'log_uniform', name='l2'),
+    Real(1e-8, 1e-1, 'log_uniform', name='init'),
     Integer(10, 80, name='n_iters'),
     Real(0.5, 1, name='alpha'),
     Real(1e+1, 1e+2, 'log_uniform', name='x_max')
