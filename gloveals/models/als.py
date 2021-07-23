@@ -64,7 +64,7 @@ class GloVeALS:
                     healthy = False
                     print('[ERROR] Training failed! nan or inf found')
                     break
-                    
+
                 if compute_loss:
                     self.losses.append(np.mean(C_.data * E_.data**2))
                 prog.update()
@@ -95,7 +95,7 @@ class GloVeALS:
 
         if weighted:
             # weighted mean squared error
-            return np.mean(C_.data * (E_.data)**2) 
+            return np.mean(C_.data * (E_.data)**2)
         else:
             # uniform mse
             return np.mean((E_.data)**2)
@@ -147,6 +147,32 @@ def _partial_update_factor(i, conf, err, ind, W, H, bi, bj, lmbda):
             err[m] -= wik * hjk
 
         W[i, k] = wik
+
+
+@nb.njit(
+    [
+        "void(i8, f4[:], f4[:], i4[:], f4[:,::1], f4[:,::1], f4[::1], f4[::1], f8)",
+        "void(i8, f8[:], f8[:], i4[:], f8[:,::1], f8[:,::1], f8[::1], f8[::1], f8)"
+    ],
+    cache=True
+)
+def _partial_update_factor_cg(i, conf, err, ind, W, H, bi, bj, lmbda):
+    """
+    """
+    d = h.shape[-1]
+    dtype = W.dtype
+
+    h = np.ascontiguousarray(H[ind])
+
+    # compute b
+    wh = W[i] @ h.T
+    b = ((err - wh) * conf) @ h
+
+    # compute A
+    CH = np.expand_dims(conf, axis=-1) * h
+    A = h.T @ CH + lmbda * np.eye(d, dtype=dtype)
+
+    W[i] = __solve_cg(A, b, W[i].copy())
 
 
 @nb.njit(
@@ -205,7 +231,8 @@ def update_factor(confidence, error, indices, indptr, W, H, bi, bj, lmbda):
         conf = confidence[i0:i1]
         err = error[i0:i1]
 
-        _partial_update_factor(i, conf, err, ind, W, H, bi, bj, lmbda)
+        # _partial_update_factor(i, conf, err, ind, W, H, bi, bj, lmbda)
+        _partial_update_factor_cg(i, conf, err, ind, W, H, bi, bj, lmbda)
         _partial_update_bias(i, conf, err, ind, W, H, bi, bj, lmbda)
 
 
@@ -235,6 +262,32 @@ def compute_error(data, error, indices, indptr, W, H, bi, bj):
             for k in range(W.shape[1]):
                 error[m] -= W[i, k] * H[j, k]
             error[m] -= bi[i] + bj[j]
+
+
+@nb.njit
+def __solve_cg(A, b, x0, n_iters=3, eps=1e-20):
+    """
+    """
+    d = len(b)
+    r = b - A @ x0
+    p = r.copy()
+    rsold = np.sum(r**2)
+    if rsold**.5 < eps:
+        return x0
+
+    for it in range(n_iters):
+        Ap = A @ p.T
+        pAp = p @ Ap
+        alpha = rsold / pAp
+        x0 += alpha * p
+        r -= alpha * Ap
+
+        rsnew = np.sum(r**2)
+        if rsnew**.5 < eps:
+            break
+        p = r + (rsnew / rsold) * p
+        rsold = rsnew
+    return x0
 
 
 def transform(X, x_max=100, alpha=3/4., dtype=np.float32):
