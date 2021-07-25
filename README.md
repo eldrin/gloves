@@ -55,6 +55,7 @@ Unlike the (stochastic) gradient descent method, ALS generally converges in a co
 - [ ] adding feature
   - [ ] `.most_similar` method
   - [ ] utility to convert embedding to `gensim` model?
+- [ ] benchmark (vs. [`glove-python`](https://github.com/maciejkula/glove-python))
 
 
 ## Authors
