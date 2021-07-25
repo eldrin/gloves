@@ -189,10 +189,11 @@ def _partial_update_factor_cg(i, conf, err, ind, W, H, bi, bj, lmbda):
     dtype = W.dtype
     l = dtype.type(lmbda)
 
+    w = W[i].copy()  # x0
     h = np.ascontiguousarray(H[ind])
 
     # compute b
-    err[:] += W[i] @ h.T  # temporarily update err
+    err[:] += w @ h.T  # temporarily update err
     b = (err * conf) @ h
 
     # compute A
@@ -200,10 +201,13 @@ def _partial_update_factor_cg(i, conf, err, ind, W, H, bi, bj, lmbda):
     A = h.T @ CH + l * np.eye(d, dtype=dtype)
 
     # solve it
-    W[i] = __solve_cg(A, b, W[i].copy())
+    w = __solve_cg(A, b, w)
 
     # update errors
-    err[:] -= W[i] @ h.T
+    err[:] -= w @ h.T
+
+    # update W
+    W[i] = w
 
 
 @nb.njit(
