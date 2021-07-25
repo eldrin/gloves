@@ -177,7 +177,7 @@ def _partial_update_bias(i, conf, err, ind, W, H, bi, lmbda):
     bi[i] = bii
 
 
-def eals_update(C, E, W, H, bi, regularization):
+def eals_update(C, E, W, H, bi, regularization, *args, **kwargs):
     return _update_factor(C.data, E.data, C.indices, C.indptr,
                           W, H, bi, regularization)
 
@@ -201,7 +201,13 @@ def _update_factor(confidence, error, indices, indptr, W, H, bi, lmbda):
         _partial_update_bias(i, conf, err, ind, W, H, bi, lmbda)
 
 
-def compute_error(data, error, indices, indptr, W, H, bi, bj):
+def compute_error(X, E, W, H, bi, bj, *args, **kwargs):
+    """
+    """
+    return _compute_error(X.data, E.data, X.indices, X.indptr, W, H, bi, bj)
+
+
+def _compute_error(data, error, indices, indptr, W, H, bi, bj):
     """
     """
     N, d = W.shape
