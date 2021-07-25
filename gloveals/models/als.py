@@ -149,6 +149,32 @@ def _partial_update_factor(i, conf, err, ind, W, H, bi, bj, lmbda):
         W[i, k] = wik
 
 
+@nb.njit
+def __solve_cg(A, b, x0, n_iters=3, eps=1e-20):
+    """
+    """
+    d = len(b)
+    r = b - A @ x0
+    p = r.copy()
+    rsold = np.sum(r**2)
+    if rsold**.5 < eps:
+        return x0
+
+    for it in range(n_iters):
+        Ap = A @ p.T
+        pAp = p @ Ap
+        alpha = rsold / pAp
+        x0 += alpha * p
+        r -= alpha * Ap
+
+        rsnew = np.sum(r**2)
+        if rsnew**.5 < eps:
+            break
+        p = r + (rsnew / rsold) * p
+        rsold = rsnew
+    return x0
+
+
 @nb.njit(
     [
         "void(i8, f4[:], f4[:], i4[:], f4[:,::1], f4[:,::1], f4[::1], f4[::1], f8)",
@@ -159,20 +185,25 @@ def _partial_update_factor(i, conf, err, ind, W, H, bi, bj, lmbda):
 def _partial_update_factor_cg(i, conf, err, ind, W, H, bi, bj, lmbda):
     """
     """
-    d = h.shape[-1]
+    d = H.shape[-1]
     dtype = W.dtype
+    l = dtype.type(lmbda)
 
     h = np.ascontiguousarray(H[ind])
 
     # compute b
-    wh = W[i] @ h.T
-    b = ((err - wh) * conf) @ h
+    err[:] += W[i] @ h.T  # temporarily update err
+    b = (err * conf) @ h
 
     # compute A
     CH = np.expand_dims(conf, axis=-1) * h
-    A = h.T @ CH + lmbda * np.eye(d, dtype=dtype)
+    A = h.T @ CH + l * np.eye(d, dtype=dtype)
 
+    # solve it
     W[i] = __solve_cg(A, b, W[i].copy())
+
+    # update errors
+    err[:] -= W[i] @ h.T
 
 
 @nb.njit(
@@ -231,8 +262,8 @@ def update_factor(confidence, error, indices, indptr, W, H, bi, bj, lmbda):
         conf = confidence[i0:i1]
         err = error[i0:i1]
 
-        # _partial_update_factor(i, conf, err, ind, W, H, bi, bj, lmbda)
-        _partial_update_factor_cg(i, conf, err, ind, W, H, bi, bj, lmbda)
+        _partial_update_factor(i, conf, err, ind, W, H, bi, bj, lmbda)
+        # _partial_update_factor_cg(i, conf, err, ind, W, H, bi, bj, lmbda)
         _partial_update_bias(i, conf, err, ind, W, H, bi, bj, lmbda)
 
 
@@ -264,38 +295,12 @@ def compute_error(data, error, indices, indptr, W, H, bi, bj):
             error[m] -= bi[i] + bj[j]
 
 
-@nb.njit
-def __solve_cg(A, b, x0, n_iters=3, eps=1e-20):
-    """
-    """
-    d = len(b)
-    r = b - A @ x0
-    p = r.copy()
-    rsold = np.sum(r**2)
-    if rsold**.5 < eps:
-        return x0
-
-    for it in range(n_iters):
-        Ap = A @ p.T
-        pAp = p @ Ap
-        alpha = rsold / pAp
-        x0 += alpha * p
-        r -= alpha * Ap
-
-        rsnew = np.sum(r**2)
-        if rsnew**.5 < eps:
-            break
-        p = r + (rsnew / rsold) * p
-        rsold = rsnew
-    return x0
-
-
 def transform(X, x_max=100, alpha=3/4., dtype=np.float32):
     """
     """
     # transform target values
-    X_ = X.copy().astype(dtype)
-    X_.data = np.log(X_.data + 1.)
+    X_ = X.copy()
+    X_.data = np.log(X_.data + 1.).astype(dtype)
 
     # prepare confidence function
     C_ = X.copy().astype(dtype)
