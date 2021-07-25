@@ -1,13 +1,14 @@
 import os
 from os.path import dirname, basename, join, splitext
 os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
 if 'NUMBA_NUM_THREADS' not in os.environ:
     os.environ['NUMBA_NUM_THREADS'] = '4'
 
 from typing import Optional, TypedDict, Union
 
-import sys
-sys.path.append(join(dirname(__file__), '..'))
+# import sys
+# sys.path.append(join(dirname(__file__), '..'))
 
 import json
 import glob
@@ -54,14 +55,16 @@ class EvaluationScore(TypedDict):
 
 # alias for the other data objects
 FaruquiEvalSet = dict[str, dict[frozenset, float]]
-EvaluationSet = Union[FaruquiEvalSet, sp.coo_matrix] 
+EvaluationSet = Union[FaruquiEvalSet, sp.coo_matrix]
 EvaluationResult = dict[str, EvaluationScore]
 Predictions = dict[str, tuple[str, str]]
 
 # ============== Data Object Definitions =================
 
-
+NUM_THREADS = int(os.environ['NUMBA_NUM_THREADS'])
 RAND_STATE = 1234
+np.random.seed(RAND_STATE)
+
 EVAL_DATA_PATH = join(
     dirname(__file__),
     '../eval-word-vectors/data/word-sim/'
@@ -73,7 +76,7 @@ EVAL_DATA_PATH = join(
 # setup the search space
 SPACE = [
     Integer(1, 6, name='window_size_factor2'),
-    Integer(4, 9, name='n_components_log2'),
+    Integer(4, 6, name='n_components_log2'),
     Real(1e-8, 2e+1, 'log_uniform', name='l2'),
     Real(1e-8, 1e-1, 'log_uniform', name='init'),
     Integer(10, 80, name='n_iters'),
@@ -271,7 +274,8 @@ def fit(train_data: sp.coo_matrix,
         n_iters=n_iters,
         alpha=alpha,
         x_max=x_max,
-        dtype=np.float32
+        dtype=np.float32,
+        num_threads=NUM_THREADS
     )
     glove.fit(train_data)
 
