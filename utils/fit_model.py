@@ -7,9 +7,6 @@ if 'NUMBA_NUM_THREADS' not in os.environ:
 
 from typing import Optional, TypedDict, Union
 
-# import sys
-# sys.path.append(join(dirname(__file__), '..'))
-
 import json
 import glob
 import argparse
@@ -76,7 +73,7 @@ EVAL_DATA_PATH = join(
 # setup the search space
 SPACE = [
     Integer(1, 6, name='window_size_factor2'),
-    Integer(4, 6, name='n_components_log2'),
+    Integer(4, 9, name='n_components_log2'),
     Real(1e-8, 2e+1, 'log_uniform', name='l2'),
     Real(1e-8, 1e-1, 'log_uniform', name='init'),
     Integer(10, 80, name='n_iters'),
