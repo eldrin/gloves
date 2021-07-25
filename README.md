@@ -49,6 +49,14 @@ Unlike the (stochastic) gradient descent method, ALS generally converges in a co
 [^1]: Specifically, it does not require hyper parameters regarding the gradient descent update (i.e., learning rate, momentum related ones if one uses algorithms such as Adagrad or ADAM).
 
 
+## TODO
+
+- [ ] writing test
+- [ ] adding feature
+  - [ ] `.most_similar` method
+  - [ ] utility to convert embedding to `gensim` model?
+
+
 ## Authors
 
 Jaehun Kim
