@@ -45,12 +45,13 @@ def define_extensions():
     src_ext = ".pyx"
     modules = [
         Extension(
-            "gloveals.models._als",
-            [join("gloveals", "models", "_als.pyx")],
+            f"gloveals.models.{cython_module}",
+            [join("gloveals", "models", f"{cython_module}.pyx")],
             language="c++",
             extra_compile_args=compile_args,
             extra_link_args=link_args
         )
+        for cython_module in ['_als', '_sgd']
     ]
 
     return cythonize(modules)

@@ -18,13 +18,15 @@ from scipy import sparse as sp
 from scipy.stats import kendalltau
 
 import skopt
-from skopt.space import Real, Integer
+from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
 from skopt import gp_minimize
 
 from tokenizers import Tokenizer
 
+from gloveals.models.base import GloVeBase
 from gloveals.models.als import GloVeALS
+from gloveals.models.sgd import GloVeSGD
 from gloveals.evaluation import split_data
 
 
@@ -56,11 +58,14 @@ EvaluationSet = Union[FaruquiEvalSet, sp.coo_matrix]
 EvaluationResult = dict[str, EvaluationScore]
 Predictions = dict[str, tuple[str, str]]
 
+# aliasing parameter tuple. (note: see the SPACE variable below)
+HyperParams = tuple[int, int, int, float, float, bool, float]
+
 # ============== Data Object Definitions =================
 
 NUM_THREADS = int(os.environ['NUMBA_NUM_THREADS'])
 RAND_STATE = 1234
-np.random.seed(RAND_STATE)
+# np.random.seed(RAND_STATE)
 
 EVAL_DATA_PATH = join(
     dirname(__file__),
@@ -74,11 +79,10 @@ EVAL_DATA_PATH = join(
 SPACE = [
     Integer(1, 6, name='window_size_factor2'),
     Integer(4, 9, name='n_components_log2'),
-    Real(1e-8, 2e+1, 'log_uniform', name='l2'),
-    Real(1e-8, 1e-1, 'log_uniform', name='init'),
     Integer(10, 80, name='n_iters'),
     Real(0.5, 1, name='alpha'),
-    Real(1e+1, 1e+2, 'log_uniform', name='x_max')
+    Real(1e+1, 1e+2, 'log_uniform', name='x_max'),
+    Categorical([True, False], name='share_params')
 ]
 
 
@@ -156,7 +160,7 @@ def check_exists(token: str,
     return None
 
 
-def compute_similarities(glove: GloVeALS,
+def compute_similarities(glove: GloVeBase,
                          data: GloVeData,
                          eval_set: EvaluationSet,
                          tokenizer: Optional[Tokenizer] = None) -> Predictions:
@@ -217,7 +221,7 @@ def compute_scores(eval_set: FaruquiEvalSet,
     return scores
 
 
-def is_model_bad(glove: GloVeALS) -> bool:
+def is_model_bad(glove: GloVeBase) -> bool:
     """
     """
     # check nan
@@ -258,45 +262,62 @@ def prep_dataset(window_size_factor2: int,
 
 
 def fit(train_data: sp.coo_matrix,
-        n_components_log2: int, l2: float, init: float,
-        n_iters: int, alpha: float, x_max: float) -> GloVeALS:
+        solver: str, n_components_log2: int,
+        n_iters: int, alpha: float, x_max: float,
+        lr_or_l2: float, share_params: bool) -> GloVeBase:
     """
     """
     # initiate and fit model
     d = int(2**n_components_log2)
-    glove = GloVeALS(
-        n_components=d,
-        l2=l2,
-        init=init,
-        n_iters=n_iters,
-        alpha=alpha,
-        x_max=x_max,
-        dtype=np.float32,
-        num_threads=NUM_THREADS
-    )
+
+    if solver == 'als':
+        glove = GloVeALS(
+            n_components=d,
+            l2=lr_or_l2,
+            n_iters=n_iters,
+            alpha=alpha,
+            x_max=x_max,
+            dtype=np.float32,
+            share_params=share_params,
+            num_threads=NUM_THREADS,
+            random_state=RAND_STATE
+        )
+    else:  # sgd
+        glove = GloVeSGD(
+            n_components=d,
+            learning_rate=lr_or_l2,
+            n_iters=n_iters,
+            alpha=alpha,
+            x_max=x_max,
+            dtype=np.float32,
+            share_params=share_params,
+            num_threads=NUM_THREADS,
+            random_state=RAND_STATE
+        )
     glove.fit(train_data)
 
     return glove
 
 
-def _objective(params: tuple[float],
+def _objective(params: HyperParams,
                data_fns: list[str],
                eval_type: str,
                eval_set_path: str,
+               solver: str = 'als',
                failure_score: float = 1e+3) -> float:
     """
     """
     # parse params
-    (window_size_factor2,
-     n_components_log2,
-     l2, init, n_iters, alpha, x_max) = params
+    (window_size_factor2, n_components_log2,
+     n_iters, alpha, x_max, share_params, lr_or_l2) = params
 
     # prep data and fit the model
     train, valid, data = prep_dataset(window_size_factor2,
                                       data_fns,
                                       eval_type,
                                       eval_set_path)
-    glove = fit(train, n_components_log2, l2, init, n_iters, alpha, x_max)
+    glove = fit(train, solver, n_components_log2, n_iters,
+                alpha, x_max, lr_or_l2, share_params)
 
     # check the model fit failed (numerically)
     if is_model_bad(glove) or not hasattr(glove, 'embeddings_'):
@@ -332,6 +353,10 @@ def extract_argparse():
     parser.add_argument('out_path', type=str,
                         help='path of the resulting search result and model')
 
+    parser.add_argument('--solver', type=str, default='als',
+                        choices={'als', 'sgd'},
+                        help='solver for the GloVe model')
+
     parser.add_argument('--eval-set', type=str, default='split',
                         choices={'split', 'faruqui'})
 
@@ -362,12 +387,20 @@ def main():
     }
 
     # hyper-parameter tuning: search the best model
+    if args.solver == 'sgd':
+        # if the solver is SGD, add `learn_rate`
+        space = SPACE + [Real(1e-3, 1e+0, 'log_uniform', name='lr')]
+    else:
+        # if the solver is ALS, add `l2` regularization coefficient
+        space = SPACE + [Real(1e-8, 2e+1, 'log_uniform', name='l2')]
+
     res_gp = gp_minimize(
         partial(_objective,
                 data_fns=fns,
                 eval_type=args.eval_set,
-                eval_set_path=args.eval_set_path),
-        SPACE,
+                eval_set_path=args.eval_set_path,
+                solver=args.solver),
+        space,
         n_calls=args.n_calls,
         random_state=RAND_STATE,
         verbose=True
@@ -379,19 +412,26 @@ def main():
                store_objective=False)
 
     # fit final model
-    (window_size_factor2,
-     n_components_log2,
-     l2, init, n_iters, alpha, x_max) = res_gp['x']  # optimal setup
+    (window_size_factor2, n_components_log2,
+     n_iters, alpha, x_max, share_params, lr_or_l2) = res_gp['x']  # optimal setup
 
-    # load data
+    # load data and fit the model
     win_sz = window_size_factor2 * 2 - 1
     data = load_data(fns[win_sz])
-    glove = fit(data['X'], n_components_log2, l2, init, n_iters, alpha, x_max)
-    np.savez(join(args.out_path, 'model.npz'),
-             W=glove.embeddings_['W'],
-             H=glove.embeddings_['H'],
-             bi=glove.embeddings_['bi'],
-             bj=glove.embeddings_['bj'])
+    glove = fit(data['X'], args.solver, n_components_log2, n_iters,
+                alpha, x_max, lr_or_l2, share_params)
+
+    # save the results to disk
+    params_to_save = {
+        'W': glove.embeddings_['W'],
+        'bi': glove.embeddings_['bi']
+    }
+    if not share_params:
+        params_to_save.update({
+            'H': glove.embeddings_['H'],
+            'bj': glove.embeddings_['bj']
+        })
+    np.savez(join(args.out_path, 'model.npz'), **params_to_save)
 
 
 if __name__ == "__main__":

@@ -3,23 +3,17 @@ from scipy import sparse as sp
 
 from tqdm import tqdm
 from . import _als
+from .base import GloVeBase, transform
 
 
-class GloVeALS:
-    def __init__(self, n_components, l2=1e-3, init=1e-3, n_iters=15,
-                 alpha=3/4., x_max=100, use_native=True,
-                 dtype=np.float32, num_threads=0):
+class GloVeALS(GloVeBase):
+    def __init__(self, n_components, l2=1e-3, n_iters=15, alpha=3/4., x_max=100,
+                 use_native=True, share_params=True, dtype=np.float32,
+                 random_state=None, num_threads=0):
         """
         """
-        self.n_components = n_components
-        self.l2 = l2
-        self.init = init
-        self.n_iters = n_iters
-        self.alpha = alpha
-        self.x_max = x_max
-        self.dtype = dtype
-        self.use_native = use_native
-        self.num_threads = num_threads
+        super().__init__(n_components, l2, n_iters, alpha, x_max, use_native,
+                         share_params, dtype, random_state, num_threads)
 
     def fit(self, X, verbose=True, compute_loss=False):
         """
@@ -35,35 +29,46 @@ class GloVeALS:
         N = X.shape[0]
         d = self.n_components
 
-        W = np.random.randn(N, d).astype(self.dtype) * self.init
-        H = np.random.randn(N, d).astype(self.dtype) * self.init
-        bi = np.zeros((N,), dtype=self.dtype)
-        bj = np.zeros((N,), dtype=self.dtype)
+        W, bi = self._init_params(N)
+        self.embeddings_ = dict(W=W, bi=bi)
+        if self.share_params:
+            self.embeddings_.update(dict(H=W, bj=bi))
+        else:
+            H, bj = self._init_params(N)
+            self.embeddings_.update(dict(H=H, bj=bj))
 
         # compute error matrix
         E_ = X_.copy()
-        self.compute_error(X_, E_, W, H, bi, bj)
+        self.compute_error(X_, E_,
+                           self.embeddings_['W'], self.embeddings_['H'],
+                           self.embeddings_['bi'], self.embeddings_['bj'])
 
+        # TODO: we might not actually need to track `confidence` matrix
+        # maybe it's trivial computational gain compared to the memory
         Xt_ = X_.T.tocsr()
         Ct_ = C_.T.tocsr()
         Et_ = E_.T.tocsr()
         if compute_loss:
             self.losses = [np.mean(C_.data * E_.data**2)]
 
-        healthy = True
         with tqdm(total=self.n_iters, ncols=80, disable=not verbose) as prog:
             for n in range(self.n_iters):
 
                 E_ = Et_.T.tocsr()
-                self.solver(C_, E_, W, H, bi, self.l2,
+                self.solver(C_, E_,
+                            self.embeddings_['W'],
+                            self.embeddings_['H'].copy(),
+                            self.embeddings_['bi'], self.l2,
                             num_threads=self.num_threads)
 
                 Et_ = E_.T.tocsr()
-                self.solver(Ct_, Et_, H, W, bj, self.l2,
+                self.solver(Ct_, Et_,
+                            self.embeddings_['H'],
+                            self.embeddings_['W'].copy(),
+                            self.embeddings_['bj'], self.l2,
                             num_threads=self.num_threads)
 
-                if self._is_unhealthy(W, H, bi, bj):
-                    healthy = False
+                if self._is_unhealthy():
                     print('[ERROR] Training failed! nan or inf found')
                     break
 
@@ -71,56 +76,9 @@ class GloVeALS:
                     self.losses.append(np.mean(C_.data * E_.data**2))
                 prog.update()
 
-        if healthy:
-            self.embeddings_ = {
-                'W': W, 'H': H, 'bi': bi, 'bj': bj
-            }
-
-    def score(self, X, weighted=True):
-        """
-        """
-        if not hasattr(self, 'embeddings_'):
-            raise Exception('[ERROR] GloVeALS should be fitted first!')
-
-        # force to convert
-        if not sp.isspmatrix_csr(X):
-            X = X.tocsr()
-
-        # transform input data
-        X_, C_ = transform(X, self.x_max, self.alpha, self.dtype)
-
-        # compute errors
-        E_ = X_.copy()
-        self.compute_error(X_, E_,
-                           self.embeddings_['W'], self.embeddings_['H'],
-                           self.embeddings_['bi'], self.embeddings_['bj'])
-
-        if weighted:
-            # weighted mean squared error
-            return np.mean(C_.data * (E_.data)**2)
-        else:
-            # uniform mse
-            return np.mean((E_.data)**2)
-
-    @staticmethod
-    def _is_unhealthy(*params):
-        """
-        """
-        # check nan
-        is_nan = np.any([np.any(np.isnan(param)) for param in params])
-
-        # check inf
-        is_inf = np.any([np.any(np.isnan(param)) for param in params])
-
-        return any([is_nan, is_inf])
-
     @property
     def solver(self):
         return _als.eals_update if self.use_native else eals_update
-
-    @property
-    def compute_error(self):
-        return _als.compute_error if self.use_native else compute_error
 
 
 def _partial_update_factor(i, conf, err, ind, W, H, bi, lmbda):
@@ -199,44 +157,3 @@ def _update_factor(confidence, error, indices, indptr, W, H, bi, lmbda):
 
         _partial_update_factor(i, conf, err, ind, W, H, bi, lmbda)
         _partial_update_bias(i, conf, err, ind, W, H, bi, lmbda)
-
-
-def compute_error(X, E, W, H, bi, bj, *args, **kwargs):
-    """
-    """
-    return _compute_error(X.data, E.data, X.indices, X.indptr, W, H, bi, bj)
-
-
-def _compute_error(data, error, indices, indptr, W, H, bi, bj):
-    """
-    """
-    N, d = W.shape
-    rnd_idx = np.random.permutation(N)
-    for n in range(N):
-        i = rnd_idx[n]
-        i0, i1 = indptr[i], indptr[i + 1]
-        if i1 == i0:
-            continue
-
-        for m in range(i0, i1):
-            j = indices[m]
-            error[m] = data[m]  # yij
-            for k in range(W.shape[1]):
-                error[m] -= W[i, k] * H[j, k]
-            error[m] -= bi[i] + bj[j]
-
-
-def transform(X, x_max=100, alpha=3/4., dtype=np.float32):
-    """
-    """
-    # transform target values
-    X_ = X.copy()
-    X_.data = np.log(X_.data + 1.).astype(dtype)
-
-    # prepare confidence function
-    C_ = X.copy().astype(dtype)
-    lt_xmax = X.data < x_max
-    C_.data[lt_xmax]  = (X.data[lt_xmax] / x_max)**alpha
-    C_.data[~lt_xmax] = 1.
-
-    return X_, C_
