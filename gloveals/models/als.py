@@ -43,30 +43,32 @@ class GloVeALS(GloVeBase):
                            self.embeddings_['W'], self.embeddings_['H'],
                            self.embeddings_['bi'], self.embeddings_['bj'])
 
-        # TODO: we might not actually need to track `confidence` matrix
-        # maybe it's trivial computational gain compared to the memory
-        Xt_ = X_.T.tocsr()
-        Ct_ = C_.T.tocsr()
-        Et_ = E_.T.tocsr()
+        if not self.share_params:
+            # TODO: we might not actually need to track `confidence` matrix
+            # maybe it's trivial computational gain compared to the memory
+            Ct_ = C_.T.tocsr()
+            Et_ = E_.T.tocsr()
+
         if compute_loss:
             self.losses = [np.mean(C_.data * E_.data**2)]
 
         with tqdm(total=self.n_iters, ncols=80, disable=not verbose) as prog:
             for n in range(self.n_iters):
 
-                E_ = Et_.T.tocsr()
                 self.solver(C_, E_,
                             self.embeddings_['W'],
                             self.embeddings_['H'].copy(),
                             self.embeddings_['bi'], self.l2,
                             num_threads=self.num_threads)
 
-                Et_ = E_.T.tocsr()
-                self.solver(Ct_, Et_,
-                            self.embeddings_['H'],
-                            self.embeddings_['W'].copy(),
-                            self.embeddings_['bj'], self.l2,
-                            num_threads=self.num_threads)
+                if not self.share_params:
+                    Et_ = E_.T.tocsr()
+                    self.solver(Ct_, Et_,
+                                self.embeddings_['H'],
+                                self.embeddings_['W'].copy(),
+                                self.embeddings_['bj'], self.l2,
+                                num_threads=self.num_threads)
+                    E_ = Et_.T.tocsr()
 
                 if self._is_unhealthy():
                     print('[ERROR] Training failed! nan or inf found')

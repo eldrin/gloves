@@ -119,9 +119,7 @@ setup(name=NAME,
       classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Scientific/Engineering :: Information Analysis'
       ],
       keywords='GloVe-ALS',
@@ -137,5 +135,8 @@ setup(name=NAME,
       },
       ext_modules=define_extensions(),
       cmdclass={"build_ext": build_ext},
+      entry_points = {
+          'console_scripts': ['cooccur=gloveals.cli.cooccur:main'],
+      },
       test_suite='tests',
       zip_safe=False)

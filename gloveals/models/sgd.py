@@ -13,6 +13,13 @@ class GloVeSGD(GloVeBase):
                  share_params=True, dtype=np.float32, random_state=None,
                  num_threads=0):
         """
+
+        this class implement own version of GloVe based on
+        [python-glove](https://github.com/maciejkula/glove-python)
+
+        it learns the embeddings using SGD (ADAGRAD) solver.
+        it misses L2 regularization, which could be added.
+
         """
         super().__init__(n_components, 0, n_iters, alpha, x_max, use_native,
                          share_params, dtype, random_state, num_threads)

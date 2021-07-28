@@ -1,7 +1,12 @@
+import logging
 import numpy as np
 from scipy import sparse as sp
 
 from . import _als
+from ..utils import is_symmetric
+
+
+logger = logging.getLogger('GloVeBase')
 
 
 class GloVeBase(object):
@@ -10,7 +15,7 @@ class GloVeBase(object):
 
     def __init__(self, n_components, l2=1e-3, n_iters=15, alpha=3/4., x_max=100,
                  use_native=True, share_params=True, dtype=np.float32,
-                 random_state=None, num_threads=0):
+                 random_state=None, num_threads=0) -> None:
         """
         """
         self.n_components = n_components
@@ -31,7 +36,7 @@ class GloVeBase(object):
             raise ValueError('[ERROR] `random_state` should either be seed'
                              ' {None, int} or an instance of np.random.RandomState')
 
-    def _init_params(self, n):
+    def _init_params(self, n: int) -> None:
         """
         """
         # init vectors
@@ -69,7 +74,7 @@ class GloVeBase(object):
             # uniform mse
             return np.mean((E_.data)**2)
 
-    def _is_unhealthy(self):
+    def _is_unhealthy(self) -> bool:
         """
         """
         # check nan

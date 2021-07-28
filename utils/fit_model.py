@@ -28,6 +28,7 @@ from gloveals.models.base import GloVeBase
 from gloveals.models.als import GloVeALS
 from gloveals.models.sgd import GloVeSGD
 from gloveals.evaluation import split_data
+from gloveals.corpus import Corpus, load_corpus
 
 
 # ============== Data Object Definitions =================
@@ -77,37 +78,14 @@ EVAL_DATA_PATH = join(
 
 # setup the search space
 SPACE = [
-    Integer(1, 6, name='window_size_factor2'),
+    Integer(2, 7, name='window_size_factor2'),
     Integer(4, 9, name='n_components_log2'),
     Integer(10, 80, name='n_iters'),
     Real(0.5, 1, name='alpha'),
     Real(1e+1, 1e+2, 'log_uniform', name='x_max'),
-    Categorical([True, False], name='share_params')
+    # Categorical([True, False], name='share_params')
+    Categorical([True], name='share_params')  # for checking share params woring
 ]
-
-
-def load_data(data_fn: str) -> GloVeData:
-    """
-    """
-    with open(data_fn, 'rb') as f:
-        data = pkl.load(f)
-
-        # convert triplet list to the matrix
-        row = data['triplets']['row']
-        col = data['triplets']['col']
-        val = data['triplets']['data']
-        n_entities = len(data['token_inv_map'])
-        shape = (n_entities, n_entities)
-        data['X'] = sp.coo_matrix((val, (row, col)), shape=shape)
-
-        # equip tokenizer
-        tokenizer_param = data.get('tokenizer_params')  # json (serialized)
-        if tokenizer_param is not None:
-            data['tokenizer'] = Tokenizer.from_str(tokenizer_param)
-        else:
-            data['tokenizer'] = None
-
-    return data
 
 
 def load_eval_dataset(path: str) -> FaruquiEvalSet:
@@ -161,9 +139,9 @@ def check_exists(token: str,
 
 
 def compute_similarities(glove: GloVeBase,
-                         data: GloVeData,
+                         corpus: Corpus,
                          eval_set: EvaluationSet,
-                         tokenizer: Optional[Tokenizer] = None) -> Predictions:
+                         token_inv_map: dict[str, int]) -> Predictions:
     """
     """
     eps = 1e-20
@@ -184,8 +162,8 @@ def compute_similarities(glove: GloVeBase,
                 w1, w2 = pair
 
             # can't estimate the similarity due to the coverage
-            i1 = check_exists(w1, data['token_inv_map'], data['tokenizer'])
-            i2 = check_exists(w2, data['token_inv_map'], data['tokenizer'])
+            i1 = check_exists(w1, token_inv_map, corpus._tokenizer)
+            i2 = check_exists(w2, token_inv_map, corpus._tokenizer)
             if i1 is None or i2 is None:
                 predictions[dataset][pair] = None
                 continue
@@ -247,18 +225,18 @@ def prep_dataset(window_size_factor2: int,
     """
     # load data
     win_sz = window_size_factor2 * 2 - 1
-    data = load_data(data_fns[win_sz])
+    corpus = load_corpus(data_fns[win_sz])
 
     # prepare the evaluation
     if eval_type == 'split':
-        train, valid, test = split_data(data['X'].tocoo())
+        train, valid, test = split_data(corpus.mat.tocoo())
         valid = valid + test
 
     else:
-        train = data['X']
+        train = corpus.mat
         valid = load_eval_dataset(eval_set_path)
 
-    return train, valid, data
+    return train, valid, corpus
 
 
 def fit(train_data: sp.coo_matrix,
@@ -312,10 +290,10 @@ def _objective(params: HyperParams,
      n_iters, alpha, x_max, share_params, lr_or_l2) = params
 
     # prep data and fit the model
-    train, valid, data = prep_dataset(window_size_factor2,
-                                      data_fns,
-                                      eval_type,
-                                      eval_set_path)
+    train, valid, corpus = prep_dataset(window_size_factor2,
+                                        data_fns,
+                                        eval_type,
+                                        eval_set_path)
     glove = fit(train, solver, n_components_log2, n_iters,
                 alpha, x_max, lr_or_l2, share_params)
 
@@ -329,7 +307,8 @@ def _objective(params: HyperParams,
     if eval_type == 'split':
         score = -glove.score(valid, weighted=False)
     else:
-        predictions = compute_similarities(glove, data, valid)
+        predictions = compute_similarities(glove, corpus, valid,
+                                           corpus._tokenizer.get_vocab())
         scores = compute_scores(valid, predictions)
         score = np.mean([v['tau'] for k, v in scores.items()])
 
@@ -368,7 +347,7 @@ def extract_argparse():
                              'Bayesian parameter search')
 
     parser.add_argument('--data-filename-template', type=str,
-                        default='lyrics_fold0_ws{window_size:d}.glove_data.pkl',
+                        default='mxm_ws{window_size:d}_fold0.pkl',
                         help='dataset filename template')
 
     return parser.parse_args()
@@ -383,7 +362,7 @@ def main():
     fn_tmp = args.data_filename_template
     fns = {
         i:join(args.data_path, fn_tmp.format(window_size=i))
-        for i in range(1, 13, 2)
+        for i in range(3, 15, 2)
     }
 
     # hyper-parameter tuning: search the best model
@@ -417,8 +396,8 @@ def main():
 
     # load data and fit the model
     win_sz = window_size_factor2 * 2 - 1
-    data = load_data(fns[win_sz])
-    glove = fit(data['X'], args.solver, n_components_log2, n_iters,
+    corpus = load_corpus(fns[win_sz])
+    glove = fit(corpus.mat, args.solver, n_components_log2, n_iters,
                 alpha, x_max, lr_or_l2, share_params)
 
     # save the results to disk
