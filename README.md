@@ -9,7 +9,7 @@ Implementation of [GloVe](https://github.com/stanfordnlp/GloVe) using [alternati
 Currently, installing via `github` and `pip` is the only way at the moment.
 
 ```bash
-pip install git+https://github.com/eldrin/gloveals.git@master
+pip install git+https://github.com/eldrin/glove-als.git@master
 ```
 
 ## Minimal Example
