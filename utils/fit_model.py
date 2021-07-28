@@ -80,7 +80,7 @@ EVAL_DATA_PATH = join(
 SPACE = [
     Integer(2, 7, name='window_size_factor2'),
     Integer(4, 9, name='n_components_log2'),
-    Integer(10, 80, name='n_iters'),
+    Integer(10, 120, name='n_iters'),
     Real(0.5, 1, name='alpha'),
     Real(1e+1, 1e+2, 'log_uniform', name='x_max'),
     # Categorical([True, False], name='share_params')
@@ -368,7 +368,7 @@ def main():
     # hyper-parameter tuning: search the best model
     if args.solver == 'sgd':
         # if the solver is SGD, add `learn_rate`
-        space = SPACE + [Real(1e-3, 1e+0, 'log_uniform', name='lr')]
+        space = SPACE + [Real(1e-3, 1e-1, 'log_uniform', name='lr')]
     else:
         # if the solver is ALS, add `l2` regularization coefficient
         space = SPACE + [Real(1e-8, 2e+1, 'log_uniform', name='l2')]
