@@ -1,7 +1,7 @@
-GloVe-ALS
+GloVes
 =========
 
-Implementation of [GloVe](https://github.com/stanfordnlp/GloVe) using [alternating least squares (ALS)](https://ieeexplore.ieee.org/abstract/document/4781121?casa_token=3EiDn2ITeiAAAAAA:JlpN1YDtJjwGNFcztjWdIBbcJCNlnPcPoH7OcStUJFbe8T-NXU_mqPTPvom-vfFD5pPn8s5m) algorithm, specifically using the element-wise update trick by [Pilászy et al.](https://dl.acm.org/doi/10.1145/1864708.1864726). The aim for this implementation is reasonably fast and robust training.
+Implementation of [GloVe](https://github.com/stanfordnlp/GloVe) using 2 optimization schemes. Specifically, [alternating least squares (ALS)](https://ieeexplore.ieee.org/abstract/document/4781121?casa_token=3EiDn2ITeiAAAAAA:JlpN1YDtJjwGNFcztjWdIBbcJCNlnPcPoH7OcStUJFbe8T-NXU_mqPTPvom-vfFD5pPn8s5m) algorithm using the element-wise update trick by [Pilászy et al.](https://dl.acm.org/doi/10.1145/1864708.1864726) and stochastic gradient descent (SGD) algorithm that is used in [glove-python](https://github.com/maciejkula/glove-python), which employs the [Adagrad](https://jmlr.org/papers/volume12/duchi11a/duchi11a.pdf). The aim for this implementation is reasonably fast and robust training.
 
 
 ## Get Started
@@ -25,13 +25,14 @@ from gloveals.evaluation import split_data
 Xtr, Xvl, Xts = split_data(X.tocoo())
 
 # GloveALS is scikit-learn-like object
-glove = GloVeALS(
+glove = GloVes(
     n_components=32,
     l2=1,
     init=1e-3,
     n_iters=15,
     alpha=3/4.,
     x_max=100,
+    solver='als',
     dtype=np.float32
 )
 glove.fit(Xtr, verbose=True)
