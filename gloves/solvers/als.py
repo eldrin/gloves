@@ -3,10 +3,10 @@ from scipy import sparse as sp
 
 from tqdm import tqdm
 from . import _als
-from .base import GloVeBase, transform
+from .base import SolverBase, transform
 
 
-class GloVeALS(GloVeBase):
+class ALS(SolverBase):
     def __init__(self, n_components, l2=1e-3, n_iters=15, alpha=3/4., x_max=100,
                  use_native=True, share_params=True, dtype=np.float32,
                  random_state=None, num_threads=0):
@@ -43,11 +43,9 @@ class GloVeALS(GloVeBase):
                            self.embeddings_['W'], self.embeddings_['H'],
                            self.embeddings_['bi'], self.embeddings_['bj'])
 
-        if not self.share_params:
-            # TODO: we might not actually need to track `confidence` matrix
-            # maybe it's trivial computational gain compared to the memory
-            Ct_ = C_.T.tocsr()
-            Et_ = E_.T.tocsr()
+        # TODO: we might not actually need to track `confidence` matrix
+        # maybe it's trivial computational gain compared to the memory
+        Ct_ = C_.T.tocsr()
 
         if compute_loss:
             self.losses = [np.mean(C_.data * E_.data**2)]
@@ -60,15 +58,14 @@ class GloVeALS(GloVeBase):
                             self.embeddings_['H'].copy(),
                             self.embeddings_['bi'], self.l2,
                             num_threads=self.num_threads)
+                Et_ = E_.T.tocsr()
 
-                if not self.share_params:
-                    Et_ = E_.T.tocsr()
-                    self.solver(Ct_, Et_,
-                                self.embeddings_['H'],
-                                self.embeddings_['W'].copy(),
-                                self.embeddings_['bj'], self.l2,
-                                num_threads=self.num_threads)
-                    E_ = Et_.T.tocsr()
+                self.solver(Ct_, Et_,
+                            self.embeddings_['H'],
+                            self.embeddings_['W'].copy(),
+                            self.embeddings_['bj'], self.l2,
+                            num_threads=self.num_threads)
+                E_ = Et_.T.tocsr()
 
                 if self._is_unhealthy():
                     print('[ERROR] Training failed! nan or inf found')

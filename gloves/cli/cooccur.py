@@ -28,12 +28,16 @@ def parse_arguments():
     parser.add_argument("-w", "--window-size", type=int, default=10,
                         help="window size for the cooccurrence check")
 
+    parser.add_argument("-t", "--tokenizer", type=str, default=None,
+                        help="filename of the custom `huggingface` tokenizer model")
+
     parser.add_argument("--weighted-count", default=True,
                         action=argparse.BooleanOptionalAction,
                         help="use distance based weighting on cooccurrence score")
 
-    parser.add_argument("-t", "--tokenizer", type=str, default=None,
-                        help="filename of the custom `huggingface` tokenizer model")
+    parser.add_argument("--symmetrization", default=True,
+                        action=argparse.BooleanOptionalAction,
+                        help="decide whether cooccurrence matrix is symmetrized")
 
     parser.add_argument("--quiet", default=True,
                         action=argparse.BooleanOptionalAction,
@@ -59,7 +63,7 @@ def main():
     # loading the text filepoint
     logger.info("-- Building matrix...")
     with open(args.textfile) as fp:
-        corpus.build_matrix(fp, symmetrization=True)
+        corpus.build_matrix(fp, symmetrization=args.symmetrization)
     logger.info("finished!")
 
     # save the output

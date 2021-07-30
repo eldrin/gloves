@@ -24,11 +24,9 @@ from skopt import gp_minimize
 
 from tokenizers import Tokenizer
 
-from gloveals.models.base import GloVeBase
-from gloveals.models.als import GloVeALS
-from gloveals.models.sgd import GloVeSGD
-from gloveals.evaluation import split_data
-from gloveals.corpus import Corpus, load_corpus
+from gloves.model import GloVe
+from gloves.evaluation import split_data
+from gloves.corpus import Corpus, load_corpus
 
 
 # ============== Data Object Definitions =================
@@ -72,9 +70,6 @@ EVAL_DATA_PATH = join(
     dirname(__file__),
     '../eval-word-vectors/data/word-sim/'
 )
-# EVAL_FNS = glob.glob(join(EVAL_DATA_PATH, '*.txt'))
-# if len(EVAL_FNS) == 0:
-#     raise ValueError('[ERROR] cannot find evaluation files!')
 
 # setup the search space
 SPACE = [
@@ -138,7 +133,7 @@ def check_exists(token: str,
     return None
 
 
-def compute_similarities(glove: GloVeBase,
+def compute_similarities(glove: GloVe,
                          corpus: Corpus,
                          eval_set: EvaluationSet,
                          token_inv_map: dict[str, int]) -> Predictions:
@@ -199,7 +194,7 @@ def compute_scores(eval_set: FaruquiEvalSet,
     return scores
 
 
-def is_model_bad(glove: GloVeBase) -> bool:
+def is_model_bad(glove: GloVe) -> bool:
     """
     """
     # check nan
@@ -242,37 +237,31 @@ def prep_dataset(window_size_factor2: int,
 def fit(train_data: sp.coo_matrix,
         solver: str, n_components_log2: int,
         n_iters: int, alpha: float, x_max: float,
-        lr_or_l2: float, share_params: bool) -> GloVeBase:
+        lr_or_l2: float, share_params: bool) -> GloVe:
     """
     """
     # initiate and fit model
     d = int(2**n_components_log2)
 
+    optional_params = dict()
     if solver == 'als':
-        glove = GloVeALS(
-            n_components=d,
-            l2=lr_or_l2,
-            n_iters=n_iters,
-            alpha=alpha,
-            x_max=x_max,
-            dtype=np.float32,
-            share_params=share_params,
-            num_threads=NUM_THREADS,
-            random_state=RAND_STATE
-        )
+        optional_params['l2'] =lr_or_l2
     else:  # sgd
-        glove = GloVeSGD(
-            n_components=d,
-            learning_rate=lr_or_l2,
-            n_iters=n_iters,
-            alpha=alpha,
-            x_max=x_max,
-            dtype=np.float32,
-            share_params=share_params,
-            num_threads=NUM_THREADS,
-            random_state=RAND_STATE
-        )
-    glove.fit(train_data)
+        optional_params['learning_rate'] = lr_or_l2
+
+    glove = GloVe(
+        n_components=d,
+        n_iters=n_iters,
+        alpha=alpha,
+        x_max=x_max,
+        solver=solver,
+        dtype=np.float32,
+        share_params=share_params,
+        num_threads=NUM_THREADS,
+        random_state=RAND_STATE,
+        **optional_params
+    )
+    glove.fit(train_data, verbose=True)
 
     return glove
 
@@ -305,7 +294,7 @@ def _objective(params: HyperParams,
 
     # evaluate
     if eval_type == 'split':
-        score = -glove.score(valid, weighted=False)
+        score = -glove.score(valid, weighted=False)  # MSE (the lower the better)
     else:
         predictions = compute_similarities(glove, corpus, valid,
                                            corpus._tokenizer.get_vocab())
@@ -401,16 +390,7 @@ def main():
                 alpha, x_max, lr_or_l2, share_params)
 
     # save the results to disk
-    params_to_save = {
-        'W': glove.embeddings_['W'],
-        'bi': glove.embeddings_['bi']
-    }
-    if not share_params:
-        params_to_save.update({
-            'H': glove.embeddings_['H'],
-            'bj': glove.embeddings_['bj']
-        })
-    np.savez(join(args.out_path, 'model.npz'), **params_to_save)
+    glove.save(join(args.out_path, 'model.glv.mdl'))
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
 
-NAME = 'gloveals'
+NAME = 'gloves'
 VERSION = '0.0.1'
 
 use_openmp = True
@@ -45,8 +45,8 @@ def define_extensions():
     src_ext = ".pyx"
     modules = [
         Extension(
-            f"gloveals.models.{cython_module}",
-            [join("gloveals", "models", f"{cython_module}.pyx")],
+            f"gloves.solvers.{cython_module}",
+            [join("gloves", "solvers", f"{cython_module}.pyx")],
             language="c++",
             extra_compile_args=compile_args,
             extra_link_args=link_args
@@ -136,7 +136,7 @@ setup(name=NAME,
       ext_modules=define_extensions(),
       cmdclass={"build_ext": build_ext},
       entry_points = {
-          'console_scripts': ['cooccur=gloveals.cli.cooccur:main'],
+          'console_scripts': ['cooccur=gloves.cli.cooccur:main'],
       },
       test_suite='tests',
       zip_safe=False)

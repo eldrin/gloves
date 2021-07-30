@@ -27,7 +27,7 @@ class Corpus:
 
     def build_matrix(self,
                      lines: Union[list[str], TextIO],
-                     symmetrization: bool=True) -> sp.coo_matrix:
+                     symmetrization: bool=False) -> sp.coo_matrix:
         """
         both file pointer for the text file and pre-load list of strings
         can be fed to this function
@@ -93,6 +93,7 @@ def tokenize(tokenizer: Tokenizer,
             tok = tokenizer.encode(batch)
             output.extend(list(tok.ids))
         return output
+
     else:
         tok = tokenizer.encode(line)
         return tok.ids
@@ -142,13 +143,11 @@ def cooccur2spmat(cooccur: dict[int, dict[int, float]],
             I.append(cur)
             J.append(other)
             V.append(count)
-    mat = sp.coo_matrix((V, (I, J)), shape=(n_tokens, n_tokens))
+    mat = sp.coo_matrix((V, (I, J)), shape=shape)
 
     # to make sure the symmetry
     if symmetrization:
         mat_t = mat.T
-        mat_t.setdiag(0)  # to avoid self-loop added twice
-        mat_t.eliminate_zeros()
         mat = (mat + mat_t).tocoo()
 
     # make sure there's no zeros

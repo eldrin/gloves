@@ -6,10 +6,10 @@ from . import _als
 from ..utils import is_symmetric
 
 
-logger = logging.getLogger('GloVeBase')
+logger = logging.getLogger('SolverBase')
 
 
-class GloVeBase(object):
+class SolverBase(object):
     """
     """
 
@@ -30,7 +30,7 @@ class GloVeBase(object):
 
         if isinstance(random_state, int) or random_state is None:
             self.rng = np.random.RandomState(random_state)
-        elif isintance(random_state, np.random.RandomState):
+        elif isinstance(random_state, np.random.RandomState):
             self.rng = random_state
         else:
             raise ValueError('[ERROR] `random_state` should either be seed'
@@ -77,6 +77,9 @@ class GloVeBase(object):
     def _is_unhealthy(self) -> bool:
         """
         """
+        if not hasattr(self, 'embeddings_'):
+            raise Exception('[ERROR] GloVeALS should be fitted first!')
+
         # check nan
         is_nan = np.any([np.any(np.isnan(param))
                          for param in self.embeddings_.values()])

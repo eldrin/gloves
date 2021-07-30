@@ -35,18 +35,18 @@ def _eals_update(integral[:] indptr, integral[:] indices,
     cdef floating a, b, wik, hjk, cij, bii
     cdef floating zero = 0.
 
-    cdef floating[:] initialX = np.zeros(d, dtype=dtype)
-    cdef floating * x
+    # cdef floating[:] initialX = np.zeros(d, dtype=dtype)
+    # cdef floating * x
 
     with nogil, parallel(num_threads=num_threads):
-        x = <floating *> malloc(sizeof(floating) * d)
+        # x = <floating *> malloc(sizeof(floating) * d)
         try:
             for i in prange(N, schedule='dynamic'):
                 if indptr[i] == indptr[i+1]:
                     # TODO: should we set 0s for this case similarly to implicit?
                     continue
 
-                memcpy(x, &initialX[0], sizeof(floating) * d)
+                # memcpy(x, &initialX[0], sizeof(floating) * d)
 
                 # update factors
                 for k in range(d):
@@ -62,16 +62,21 @@ def _eals_update(integral[:] indptr, integral[:] indices,
                         a = a + cij * hjk**2
                         b = b + cij * error[index] * hjk
 
-                    x[k] = b / (a + regularization)  # new value
+                    # x[k] = b / (a + regularization)  # new value
+                    wik = b / (a + regularization)  # new value
 
                     # update errors
                     for index in range(indptr[i], indptr[i+1]):
                         j = indices[index]
                         hjk = H[j, k]
-                        error[index] -= x[k] * hjk
+                        # error[index] -= x[k] * hjk
+                        error[index] -= wik * hjk
+
+                    # write to the factors
+                    W[i, k] = wik
 
                 # write to the factors
-                memcpy(&W[i, 0], x, sizeof(floating) * d)
+                # memcpy(&W[i, 0], x, sizeof(floating) * d)
 
                 # update bias
                 a = 0
@@ -88,7 +93,8 @@ def _eals_update(integral[:] indptr, integral[:] indices,
                     error[index] -= bi[i]
 
         finally:
-            free(x)
+            pass
+            # free(x)
 
 
 def compute_error(X, E, W, H, bi, bj, num_threads=0):

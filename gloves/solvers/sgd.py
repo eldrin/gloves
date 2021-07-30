@@ -2,12 +2,11 @@ import numpy as np
 from scipy import sparse as sp
 
 from tqdm import tqdm
-from . import _als
 from . import _sgd
-from .base import GloVeBase, transform
+from .base import SolverBase, transform
 
 
-class GloVeSGD(GloVeBase):
+class SGD(SolverBase):
     def __init__(self, n_components, learning_rate=0.1, n_iters=15,
                  alpha=3/4., x_max=100, max_loss=10., use_native=True,
                  share_params=True, dtype=np.float32, random_state=None,
@@ -27,15 +26,12 @@ class GloVeSGD(GloVeBase):
         self.learning_rate = learning_rate
         self.max_loss = max_loss  # gradient clipper
 
-    def fit(self, X, verbose=True, compute_loss=False):
+    def fit(self, X, verbose=True):
         """
         """
         # force to convert
-        if not sp.isspmatrix_csr(X):
+        if not sp.isspmatrix_coo(X):
             X = X.tocoo()
-
-        # transform input data
-        X_, C_ = transform(X, self.x_max, self.alpha, self.dtype)
 
         # initialize parameters
         N = X.shape[0]
@@ -56,7 +52,7 @@ class GloVeSGD(GloVeBase):
 
         # compute error matrix
         with tqdm(total=self.n_iters, ncols=80, disable=not verbose) as prog:
-            for n in range(self.n_iters):
+            for _ in range(self.n_iters):
                 self.solver(X,
                             self.embeddings_['W'], self.embeddings_['dW'],
                             self.embeddings_['H'], self.embeddings_['dH'],
