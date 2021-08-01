@@ -116,7 +116,7 @@ def download_faruqui(url: str=faruqui_wordsim_evalset_url()):
     # get home directory and make `.gloves` directory
     data_path = GLOVES_DATA_HOME / 'faruqui_wordsim_evalset'
     if not data_path.exists():
-        data_path.mkdir(parents=True, exists_ok=True)
+        data_path.mkdir(parents=True, exist_ok=True)
 
     # download the tarball file in the folder
     logger.info("Fetching Faruqui's word-sim evlauation set..")
@@ -146,7 +146,8 @@ def load_faruqui_wordsim_evalset():
     if not data_path.exists():
         download_faruqui()
 
-    valid_fns = glob.glob(join(data_path.as_posix(), '*.txt'))
+    file_path = data_path / 'mfaruqui-eval-word-vectors-74458ad' / 'data' / 'word-sim'
+    valid_fns = glob.glob(join(file_path.as_posix(), '*.txt'))
     if len(valid_fns) == 0:
         raise ValueError('[ERROR] no validation dataset found!')
 
