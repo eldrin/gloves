@@ -1,21 +1,31 @@
+import os
+from os.path import exists
+from pathlib import Path
 from typing import Optional, Union, TextIO
 import pickle as pkl
+from collections import defaultdict
+from multiprocessing import Pool
+from functools import partial
+import mmap
 
 from scipy import sparse as sp
 from tokenizers import Tokenizer
+from tqdm import tqdm
 
-from ..utils import init_tokenizer
+from ..utils import init_tokenizer, count_lines
 
 
 class Corpus:
     def __init__(self,
                  window_size: int=10,
                  uniform_count: bool=False,
-                 tokenizer_path: Optional[str]=None) -> None:
+                 tokenizer_path: Optional[str]=None,
+                 dtype: str='float32') -> None:
         """
         """
         self.window_size = window_size
         self.uniform_count = uniform_count
+        self.dtype = dtype
 
         # if tokenizer is not provided, falls back to the default
         # tokenizer, which trained on the English Wikipedia dump (dumped at 2021/03)
@@ -26,24 +36,21 @@ class Corpus:
         return self._tokenizer.get_vocab_size()
 
     def build_matrix(self,
-                     lines: Union[list[str], TextIO],
-                     symmetrization: bool=False) -> sp.coo_matrix:
+                     text: Union[list[str], str],
+                     symmetrization: bool=False,
+                     verbose: bool=False) -> sp.coo_matrix:
         """
         both file pointer for the text file and pre-load list of strings
         can be fed to this function
+
+        TODO: push the `astype` part into the "compute cooccurrence" function
         """
-        cooccur = dict()
-        for line in lines:
-            # strip line break
-            if isinstance(line, str):
-                line = line.replace('\n', '')
-
-            # tokenize
-            token_ids = tokenize(self._tokenizer, line)
-            update_cooccurance(token_ids, cooccur, self.window_size)
-
-        # convet cooccur matrix to coo matrix
-        self.mat = cooccur2spmat(cooccur, self.n_tokens, symmetrization)
+        self.mat = compute_cooccurrence(text,
+                                        self._tokenizer,
+                                        self.window_size,
+                                        self.uniform_count,
+                                        symmetrization,
+                                        verbose).astype(self.dtype)
         return self.mat
 
     def from_file(self, corpus_fn: str) -> None:
@@ -55,7 +62,8 @@ class Corpus:
         self._tokenizer = init_tokenizer(dump_str=data['tokenizer'])
         self.mat = sp.coo_matrix(
             (data['mat']['counts'], (data['mat']['row'], data['mat']['col'])),
-            shape = (self.n_tokens, self.n_tokens)
+            shape = (self.n_tokens, self.n_tokens),
+            dtype=self.dtype
         )
         self.window_size = data['window_size']
         self.uniform_count = data['uniform_count']
@@ -79,8 +87,66 @@ class Corpus:
             )
 
 
-def tokenize(tokenizer: Tokenizer,
-             line: str,
+def compute_cooccurrence(path_or_lines: Union[str, list[str]],
+                         tokenizer: Tokenizer,
+                         window_size: int = 10,
+                         uniform_count: bool = False,
+                         symmetrization: bool = True,
+                         verbose: bool = False,
+                         tqdm_position: int = 0) -> sp.coo_matrix:
+    """
+    NOTE:
+    tqdm_position is used only for the visualization purpose for
+    the CLI application. it's never relevant for usual API usage
+    """
+    cooccur = dict()
+
+    is_text_file = False
+    if isinstance(path_or_lines, str) and exists(path_or_lines):
+        is_text_file = True
+        fp = open(path_or_lines, "r+b")
+        mm = mmap.mmap(fp.fileno(), 0, prot=mmap.PROT_READ)
+        lines = iter(mm.readline, b"")
+    else:
+        lines = path_or_lines
+
+    if verbose:
+        # get the line number of the text to check progress
+        if is_text_file:
+            num_lines = Path(path_or_lines).stat().st_size
+            # num_lines = count_lines(path_or_lines)
+        else:
+            num_lines = len(lines)
+    else:
+        num_lines = 1
+
+    # 1. Read and tokenize
+    text = f"job #{tqdm_position+1:d}"
+    with tqdm(total=num_lines, ncols=80, desc=text,
+              disable=not verbose, position=tqdm_position+1) as prog:
+        for line in lines:
+            # strip line break
+            line = line.decode('utf8').replace('\n', '')
+
+            # tokenize
+            token_ids = tokenize(line, tokenizer)
+            update_cooccurrence(token_ids, cooccur, window_size, uniform_count)
+
+            prog.update()
+
+    if is_text_file:
+        mm.close()
+        fp.close()
+
+    # convet cooccur matrix to coo matrix
+    n_tokens = tokenizer.get_vocab_size()
+    mat = cooccur2spmat(cooccur, n_tokens, symmetrization)
+
+    return mat
+
+
+def tokenize(line: str,
+             tokenizer: Tokenizer,
              max_len: int=1000,
              batch_size: int=50) -> list[int]:
     """
@@ -91,7 +157,7 @@ def tokenize(tokenizer: Tokenizer,
         for i in range(0, len(naive_tokens), batch_size):
             batch = ' '.join(naive_tokens[i:i+batch_size])
             tok = tokenizer.encode(batch)
-            output.extend(list(tok.ids))
+            output.extend(tok.ids)
         return output
 
     else:
@@ -99,10 +165,10 @@ def tokenize(tokenizer: Tokenizer,
         return tok.ids
 
 
-def update_cooccurance(token_ids: list[int],
-                       cooccur: dict[int, dict[int, float]],
-                       window_size: int = 10,
-                       uniform_count: bool = False) -> None:
+def update_cooccurrence(token_ids: list[int],
+                        cooccur: dict[int, dict[int, float]],
+                        window_size: int = 10,
+                        uniform_count: bool = False) -> None:
     """
     this maybe the bottleneck.
     TODO: would numba or cython will do better job?
@@ -121,7 +187,7 @@ def update_cooccurance(token_ids: list[int],
                 row, col = other, cur
 
             if row not in cooccur:
-                cooccur[row] = dict()
+                cooccur[row] = defaultdict(float)
 
             if col not in cooccur[row]:
                 cooccur[row][col] = 0.

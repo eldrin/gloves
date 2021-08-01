@@ -8,6 +8,8 @@
 import os
 from os.path import join
 import sys
+import glob
+import logging
 import platform
 from setuptools import setup, find_packages, Extension
 
@@ -42,7 +44,7 @@ def define_extensions():
     compile_args.append("-std=c++11")
     link_args.append("-std=c++11")
 
-    src_ext = ".pyx"
+    # src_ext = ".pyx"
     modules = [
         Extension(
             f"gloves.solvers.{cython_module}",
@@ -53,6 +55,15 @@ def define_extensions():
         )
         for cython_module in ['_als', '_sgd']
     ]
+    modules.extend([
+        Extension(
+            "gloves.corpus._corpus",
+            [join("gloves", "corpus", "_corpus.pyx")],
+            language="c++",
+            extra_compile_args=compile_args,
+            extra_link_args=link_args
+        )
+    ])
 
     return cythonize(modules)
 
@@ -114,7 +125,7 @@ def requirements():
 
 setup(name=NAME,
       version=VERSION,
-      description='Glove-ALS',
+      description='Implementation of GloVe with different solvers',
       long_description=readme(),
       classifiers=[
         'Development Status :: 3 - Alpha',
@@ -122,21 +133,26 @@ setup(name=NAME,
         'Programming Language :: Python :: 3.9',
         'Topic :: Scientific/Engineering :: Information Analysis'
       ],
-      keywords='GloVe-ALS',
-      url='http://github.com/eldrin/glove-als',
+      keywords=['GloVe', 'ALS', 'Adagrad'],
+      url='http://github.com/eldrin/gloves',
       author='Jaehun Kim',
       author_email='j.h.kim@tudelft.nl',
       license='MIT',
       packages=find_packages(),
+      package_data={'gloves': ['data/*.json']},
       install_requires=requirements(),
       setup_requires=["setuptools>=18.0", "Cython>=0.24"],
       extras_require={
-          'dev': []
+          'dev': [],
+          'opthyper': ['scikit-optimize>=0.8.1']
       },
       ext_modules=define_extensions(),
       cmdclass={"build_ext": build_ext},
       entry_points = {
-          'console_scripts': ['cooccur=gloves.cli.cooccur:main'],
+          'console_scripts': [
+              'cooccur=gloves.cli.cooccur:main',
+              'learntoken=gloves.cli.learntoken:main'
+          ],
       },
       test_suite='tests',
       zip_safe=False)

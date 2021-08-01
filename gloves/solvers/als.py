@@ -15,6 +15,20 @@ class ALS(SolverBase):
         super().__init__(n_components, l2, n_iters, alpha, x_max, use_native,
                          share_params, dtype, random_state, num_threads)
 
+    def _init_params(self, n: int) -> None:
+        """ this is experimental initialize method
+
+        it is weighted as similar to what Glorot (2010a) introduced
+        """
+        # init vectors
+        W = self.rng.rand(n, self.n_components).astype(self.dtype)
+        W = (((W - .5) * 2.) * 6**.5) / (self.n_components**.5)
+
+        # init bias
+        b = np.zeros((n,), dtype=self.dtype)
+
+        return W, b
+
     def fit(self, X, verbose=True, compute_loss=False):
         """
         """

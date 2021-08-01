@@ -2,9 +2,10 @@ import logging
 import pickle as pkl
 import numpy as np
 from scipy import sparse as sp
+from scipy.spatial.distance import cdist
 
 from .solvers import ALS, SGD
-from .utils import is_symmetric
+from .utils import is_symmetric, argpart_sort
 
 
 logger = logging.getLogger('GloVeModel')
@@ -32,7 +33,7 @@ class GloVe(object):
         self.use_native = use_native
         self.share_params = share_params
         self.num_threads = num_threads
-        self.tokenizer = tokenizer
+        self._tokenizer = tokenizer
 
         # set solver
         if solver == 'als':
@@ -44,6 +45,13 @@ class GloVe(object):
                               num_threads)
         else:
             raise ValueError("[ERROR] only 'als', and 'sgd' are supported!")
+
+    def set_tokenizer(self, tokenizer):
+        """ set internal tokenizer
+
+        in case it's needed to overridden or updated.
+        """
+        self._tokenizer = tokenizer
 
     @property
     def embeddings_(self):
@@ -64,14 +72,45 @@ class GloVe(object):
         return self.solver.score(X, weighted)
 
     def most_similar(self, word, topn=5):
-        """
-        """
-        raise NotImplementedError()
+        """ Find most close words based on the cosine-distance
 
-    def __getitem__(self, word):
+        Currently it finds the exact neighbors, which means it
+        can get exponentially slow once the word vector gets larger.
+        (both in vocabulary size and the dimensionality)
+
+        Possible solutions would be:
+            1) pre-building neighbors in model file -> makes the model dump larger
+            2) falls back to approximated nearest neighbors (ANN)
+               once performance is concern -> needs ANN algorithms
+        """
+        word_id = self.get_id(word)
+        if word_id is None:
+            raise ValueError(f'[ERROR] {word} is not found in the dictionary!')
+        word_vec = self.solver.embeddings_['W'][word_id][None]
+        cos_sim = 1 - cdist(word_vec, self.solver.embeddings_['W'], 'cosine')
+        neighbors = argpart_sort(cos_sim, topn, ascending=False)
+
+        return [
+            (self._tokenizer.decode([neighbor]), cos_sim[neighbor])
+            for neighbor in neighbors
+        ]
+
+    def get_id(self, word):
         """ outputs the word vector if the word exists
         """
-        raise NotImplementedError()
+        tok = self._tokenizer.encode(word)
+        if len(tok.ids) > 1:
+            return None
+        else:
+            return tok.ids[0]
+
+    def encode(self, word_or_sentence):
+        """
+        TODO: check whether the output is too weird or not
+              (i.e., by checking every tokens are trivial such as alphabets)
+        """
+        tok = self._tokenizer.encode(word_or_sentence)
+        return self.solver.embeddings_['W'][tok.ids]
 
     def save(self, out_fn):
         """
@@ -100,7 +139,7 @@ class GloVe(object):
                 'bj': self.solver.embeddings_['bj']
             })
 
-        with open(out_fn, 'rb') as fp:
+        with open(out_fn, 'wb') as fp:
             pkl.dump({
                 'configs': configs,
                 'params': params

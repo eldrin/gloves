@@ -12,3 +12,9 @@ def pretrained_tokenizer():
     return pkg_resources.resource_filename(
         __name__, join('data', TOKENIZER_FN)
     )
+
+
+def faruqui_wordsim_evalset_url():
+    """ release file of Faruqui's word-similarity evaluation set
+    """
+    return 'https://api.github.com/repos/mfaruqui/eval-word-vectors/tarball/v1.0'

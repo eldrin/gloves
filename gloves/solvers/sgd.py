@@ -3,7 +3,7 @@ from scipy import sparse as sp
 
 from tqdm import tqdm
 from . import _sgd
-from .base import SolverBase, transform
+from .base import SolverBase
 
 
 class SGD(SolverBase):
