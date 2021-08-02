@@ -39,8 +39,7 @@ def parse_arguments():
 
     base_subparser.add_argument("-o", "--out", type=str,
                                 default='output.pkl',
-                                help=("output filename. will not be used for "
-                                      "cooccurrence matrix building"))
+                                help="output filename.")
 
     base_subparser.add_argument("-p", "--path", type=str, default="./",
                                 help="path where the output stored")
@@ -82,7 +81,7 @@ def parse_arguments():
                           choices={'split', 'faruqui'})
 
     optimize.add_argument('--data-filename-template', type=str,
-                          default='corpus_ws{window_size:d}_fold0.pkl',
+                          default='corpus_ws{window_size:d}.cooccur.pkl',
                           help='dataset filename template')
 
     # `train` sub command =================================================
