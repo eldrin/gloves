@@ -233,38 +233,6 @@ def _objective(params: dict,
     return -score
 
 
-def extract_argparse():
-    """
-    """
-    # process the arguments
-    parser = argparse.ArgumentParser(
-        description="Fit and select GloVe model for given corpus"
-    )
-
-    parser.add_argument('data_path', type=str,
-                        help='path for the dir contains pre-processed datasets')
-
-    parser.add_argument('out_path', type=str,
-                        help='path of the resulting search result and model')
-
-    parser.add_argument('--solver', type=str, default='als',
-                        choices={'als', 'sgd'},
-                        help='solver for the GloVe model')
-
-    parser.add_argument('--eval-set', type=str, default='split',
-                        choices={'split', 'faruqui'})
-
-    parser.add_argument('--n-calls', type=int, default=100,
-                        help='number of iteration (sampling) for the'
-                             'Bayesian parameter search')
-
-    parser.add_argument('--data-filename-template', type=str,
-                        default='mxm_ws{window_size:d}_fold0.pkl',
-                        help='dataset filename template')
-
-    return parser.parse_args()
-
-
 def opthyper(args):
     """
     arguments:

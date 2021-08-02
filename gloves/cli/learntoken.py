@@ -15,32 +15,6 @@ logging.basicConfig()
 logger = logging.getLogger("LearnTokenizer")
 
 
-def parse_arguments():
-    """
-    """
-    parser = argparse.ArgumentParser(
-        description="Train Tokenizer based on Byte-Level BPE"
-    )
-
-    parser.add_argument("textfile", type=str,
-                        help="text file to be processed")
-
-    parser.add_argument("-o", "--out", type=str, default='tokenizer.json',
-                        help="output filename")
-
-    parser.add_argument("-p", "--path", type=str, default="./",
-                        help="path where the output stored")
-
-    parser.add_argument("-n", "--num-tokens", type=int, default=20_000,
-                        help="number of tokens to be fitted")
-
-    parser.add_argument("--quiet", default=True,
-                        action=argparse.BooleanOptionalAction,
-                        help="set verbosity")
-
-    return parser.parse_args()
-
-
 def train_tokenizer(text_fn: str,
                     out_fn: Optional[str]=None,
                     vocab_size: int=300_000,
