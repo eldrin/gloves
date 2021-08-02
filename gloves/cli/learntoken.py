@@ -4,7 +4,6 @@ import logging
 import time
 from os.path import join
 
-from tqdm import tqdm
 from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers import Tokenizer

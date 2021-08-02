@@ -58,7 +58,8 @@ EvaluationResult = dict[str, EvaluationScore]
 Predictions = dict[str, tuple[str, str]]
 
 # aliasing parameter tuple. (note: see the SPACE variable below)
-HyperParams = tuple[int, int, int, float, float, bool, float]
+# HyperParams = tuple[int, int, int, float, float, bool, float]
+HyperParams = tuple[int, int, int, float, float, float, bool, float]  # with `init`
 
 # ============== Data Object Definitions =================
 
@@ -78,6 +79,7 @@ SPACE = [
     Integer(10, 120, name='n_iters'),
     Real(0.5, 1, name='alpha'),
     Real(1e+1, 1e+2, 'log-uniform', name='x_max'),
+    Real(1e-3, 1e+1, 'log-uniform', name='init'),
     # Categorical([True, False], name='share_params')
     Categorical([True], name='share_params')  # for checking share params woring
 ]
@@ -237,7 +239,7 @@ def prep_dataset(window_size_factor2: int,
 def fit(train_data: sp.coo_matrix,
         solver: str, n_components_log2: int,
         n_iters: int, alpha: float, x_max: float,
-        lr_or_l2: float, share_params: bool) -> GloVe:
+        lr_or_l2: float, init:float, share_params: bool) -> GloVe:
     """
     """
     # initiate and fit model
@@ -254,6 +256,7 @@ def fit(train_data: sp.coo_matrix,
         n_iters=n_iters,
         alpha=alpha,
         x_max=x_max,
+        init=init,
         solver=solver,
         dtype=np.float32,
         share_params=share_params,
@@ -276,7 +279,7 @@ def _objective(params: HyperParams,
     """
     # parse params
     (window_size_factor2, n_components_log2,
-     n_iters, alpha, x_max, share_params, lr_or_l2) = params
+     n_iters, alpha, x_max, init, share_params, lr_or_l2) = params
 
     # prep data and fit the model
     train, valid, corpus = prep_dataset(window_size_factor2,
@@ -284,7 +287,7 @@ def _objective(params: HyperParams,
                                         eval_type,
                                         eval_set_path)
     glove = fit(train, solver, n_components_log2, n_iters,
-                alpha, x_max, lr_or_l2, share_params)
+                alpha, x_max, lr_or_l2, init, share_params)
 
     # check the model fit failed (numerically)
     if is_model_bad(glove) or not hasattr(glove, 'embeddings_'):
@@ -381,13 +384,13 @@ def main():
 
     # fit final model
     (window_size_factor2, n_components_log2,
-     n_iters, alpha, x_max, share_params, lr_or_l2) = res_gp['x']  # optimal setup
+     n_iters, alpha, x_max, init, share_params, lr_or_l2) = res_gp['x']  # optimal setup
 
     # load data and fit the model
     win_sz = window_size_factor2 * 2 - 1
     corpus = load_corpus(fns[win_sz])
     glove = fit(corpus.mat, args.solver, n_components_log2, n_iters,
-                alpha, x_max, lr_or_l2, share_params)
+                alpha, x_max, lr_or_l2, init, share_params)
 
     # save the results to disk
     glove.save(join(args.out_path, 'model.glv.mdl'))

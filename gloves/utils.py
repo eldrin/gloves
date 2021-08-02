@@ -3,6 +3,10 @@ from typing import Optional
 from os.path import exists, splitext, basename, join
 import logging
 import glob
+from urllib.request import urlopen
+from urllib.error import URLError, HTTPError
+import hashlib
+from io import BytesIO
 from pathlib import Path
 import subprocess
 
@@ -15,7 +19,10 @@ from tokenizers.models import BPE
 from tokenizers.normalizers import Lowercase, NFKC, Sequence
 from tokenizers.pre_tokenizers import ByteLevel
 
-from .files import pretrained_tokenizer, faruqui_wordsim_evalset_url
+from .files import (pretrained_tokenizer,
+                    faruqui_wordsim_evalset_url,
+                    text8_url)
+# from .evaluation import EvaluationSet
 
 
 logger = logging.getLogger(__name__ + '.utils')
@@ -108,10 +115,7 @@ def argpart_sort(s, k, ascending=True):
 def download_faruqui(url: str=faruqui_wordsim_evalset_url()):
     """ download Faruqui dataset if not yet exists
     """
-    from urllib.request import urlopen
-    from urllib.error import URLError, HTTPError
     import tarfile
-    from io import BytesIO
 
     # get home directory and make `.gloves` directory
     data_path = GLOVES_DATA_HOME / 'faruqui_wordsim_evalset'
@@ -170,3 +174,83 @@ def load_faruqui_wordsim_evalset():
                 eval_set[dataset][key] = float(sim)
 
     return eval_set
+
+
+def check_md5_text8(text8zip_path):
+    """
+    """
+    # text8_md5 = '3bea1919949baf155f99411df5fada7e'  # from Mahoney's website
+    text8_md5 = 'f26f94c5209bc6159618bad4a559ff81'  # one above SEEMS wrong, so I'm using this one
+                                                    # from current downloadable file
+    this_md5 = hashlib.md5(text8zip_path.open('rb').read()).hexdigest()
+
+    if this_md5 != text8_md5:
+        raise ValueError("[ERROR] MD5 checksum doesn't match!")
+
+    return True  # it's good
+
+
+def download_text8(url: str=text8_url()):
+    """ download Text8 dataset if not yet exists
+
+    TODOs:
+      [ ] nice progress bar
+      [ ] faster host?
+    """
+    import zipfile
+
+    # get home directory and make `.gloves` directory
+    data_path = GLOVES_DATA_HOME / 'text8'
+    if not data_path.exists():
+        data_path.mkdir(parents=True, exist_ok=True)
+    file_path = data_path / 'text8.zip'
+
+    if file_path.exists() and check_md5_text8(file_path):
+        logger.info("We already have the file. aborting...")
+        return
+
+    # download the tarball file in the folder
+    logger.info("Fetching Text8 corpus..")
+    try:
+        response = urlopen(url)
+    except HTTPError as e:
+        raise SystemExit(e)
+    except URLError as e:
+        raise SystemExit(e)
+
+    logger.info("Writing the fetched results to disk..")
+    # we will check MD5 the file first, and then extract
+    with open(file_path, 'wb') as f:
+        f.write(response.read())
+
+    # check file health
+    check_md5_text8(file_path)
+
+    # if it's good, extract it
+    with zipfile.ZipFile(file_path) as zipf:
+        zipf.extract('text8', data_path.as_posix())
+
+    # close the urlopen
+    response.close()
+
+
+def check_exists(token: str,
+                 token_inv_map: dict[str, int],
+                 tokenizer: Optional[Tokenizer] = None) -> Optional[int]:
+    """
+    """
+    # here we check if the whole form of token is in tokenizer
+    # otherwise, it'll give split list of sub-tokens
+    if tokenizer is not None:
+        tok = tokenizer.encode(token)
+        if len(tok.tokens) == 1:
+            return tok.ids[0]
+        else:
+            return None
+
+    # if tokenizer is not given, use the token inverse map
+    if token in token_inv_map:
+        return token_inv_map[token]
+
+    # otherwise, return None, as indication of `not-found`
+    return None

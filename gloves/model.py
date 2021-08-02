@@ -5,7 +5,7 @@ from scipy import sparse as sp
 from scipy.spatial.distance import cdist
 
 from .solvers import ALS, SGD
-from .utils import is_symmetric, argpart_sort
+from .utils import is_symmetric, argpart_sort, init_tokenizer
 
 
 logger = logging.getLogger('GloVeModel')
@@ -15,7 +15,7 @@ class GloVe(object):
     """
     """
     def __init__(self, n_components,
-                 n_iters=15, alpha=3/4., x_max=100, solver='als',
+                 n_iters=15, init=1e-2, alpha=3/4., x_max=100, solver='als',
                  l2=1e-3, learning_rate=0.1, max_loss=10., share_params=True,
                  use_native=True, dtype=np.float32, random_state=None,
                  num_threads=0, tokenizer=None) -> None:
@@ -23,6 +23,7 @@ class GloVe(object):
         """
         self.n_components = n_components
         self.l2 = l2
+        self.init = init
         self.learning_rate = learning_rate
         self.max_loss = max_loss
         self.n_iters = n_iters
@@ -33,16 +34,17 @@ class GloVe(object):
         self.use_native = use_native
         self.share_params = share_params
         self.num_threads = num_threads
-        self._tokenizer = tokenizer
+        self._tokenizer = init_tokenizer() if tokenizer is None else tokenizer
 
         # set solver
         if solver == 'als':
-            self.solver = ALS(n_components, l2, n_iters, alpha, x_max, use_native,
-                              share_params, dtype, random_state, num_threads)
+            self.solver = ALS(n_components, l2, init, n_iters, alpha, x_max,
+                              use_native, share_params, dtype, random_state,
+                              num_threads)
         elif solver == 'sgd':
             self.solver = SGD(n_components, learning_rate, n_iters, alpha, x_max,
-                              max_loss, use_native, share_params, dtype, random_state,
-                              num_threads)
+                              max_loss, use_native, share_params, dtype,
+                              random_state, num_threads)
         else:
             raise ValueError("[ERROR] only 'als', and 'sgd' are supported!")
 
@@ -52,6 +54,10 @@ class GloVe(object):
         in case it's needed to overridden or updated.
         """
         self._tokenizer = tokenizer
+
+    @property
+    def is_unhealthy(self):
+        return self.solver._is_unhealthy()
 
     @property
     def embeddings_(self):
@@ -82,12 +88,19 @@ class GloVe(object):
             1) pre-building neighbors in model file -> makes the model dump larger
             2) falls back to approximated nearest neighbors (ANN)
                once performance is concern -> needs ANN algorithms
+
+        TODO: this should be optimized
         """
         word_id = self.get_id(word)
         if word_id is None:
             raise ValueError(f'[ERROR] {word} is not found in the dictionary!')
-        word_vec = self.solver.embeddings_['W'][word_id][None]
-        cos_sim = 1 - cdist(word_vec, self.solver.embeddings_['W'], 'cosine')
+
+        # aliasing.
+        emb = self.solver.embeddings_['W']
+        word_vec = emb[word_id][None]
+
+        # not normalized by the query word vector, but irrelevant for computing ranking
+        cos_sim = 1 - cdist(word_vec, emb, 'cosine')[0]
         neighbors = argpart_sort(cos_sim, topn, ascending=False)
 
         return [
@@ -98,6 +111,9 @@ class GloVe(object):
     def get_id(self, word):
         """ outputs the word vector if the word exists
         """
+        if not hasattr(self, '_tokenizer') or self._tokenizer is None:
+            raise ValueError('[ERROR] tokenizer is not set! set it first '
+                             'using `set_tokenizer`')
         tok = self._tokenizer.encode(word)
         if len(tok.ids) > 1:
             return None
@@ -118,14 +134,15 @@ class GloVe(object):
         configs = {
             'n_components': self.n_components,
             'l2': self.l2,
+            'init': self.init,
             'learning_rate': self.learning_rate,
             'max_loss': self.max_loss,
             'n_iters': self.n_iters,
             'alpha': self.alpha,
             'x_max': self.x_max,
             'dtype': self.dtype,
-            'solver_type': self.solver_type,
-            'user_native': self.use_native,
+            'solver': self.solver_type,
+            'use_native': self.use_native,
             'share_params': self.share_params,
             'num_threads': self.num_threads
         }
@@ -151,6 +168,6 @@ class GloVe(object):
         """
         with open(fn, 'rb') as fp:
             saved = pkl.load(fp)
-            new_glove = cls(**saved['config'])
+            new_glove = cls(**saved['configs'])
         new_glove.solver.embeddings_ = saved['params']
         return new_glove

@@ -6,6 +6,10 @@ from . import _sgd
 from .base import SolverBase
 
 
+SEARCHABLES = {'n_components', 'lr', 'n_iters', 'alpha',
+               'x_max', 'share_params'}
+
+
 class SGD(SolverBase):
     def __init__(self, n_components, learning_rate=0.1, n_iters=15,
                  alpha=3/4., x_max=100, max_loss=10., use_native=True,

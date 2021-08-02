@@ -15,7 +15,7 @@ from ..corpus import (Corpus,
 
 
 logging.basicConfig()
-logger = logging.getLogger("Cooccurrence")
+logger = logging.getLogger("CooccurCLI")
 
 
 COOCCUR_MAX_JOB = os.environ.get('COOCCUR_MAX_JOB')
@@ -43,9 +43,7 @@ def parse_arguments():
 
     base_subparser.add_argument("--symmetrization", default=True,
                                 action=argparse.BooleanOptionalAction,
-                                help=("decide whether cooccurrence matrix is symmetrized. "
-                                      "it is ONLY used for `build` and `merge` sub-command. "
-                                      "(it'll be ignored for `covert` sub-command"))
+                                help="decide whether cooccurrence matrix is symmetrized. ")
 
     base_subparser.add_argument("--quiet", default=True,
                                 action=argparse.BooleanOptionalAction,
@@ -120,7 +118,7 @@ def process_file(pid: int,
     corpus.save(fn)
 
 
-def build(args):
+def build_cooccur(args):
     """
     """
     # for windows support
@@ -154,7 +152,7 @@ def build(args):
     logger.info("finished!")
 
 
-def merge(args):
+def merge_cooccur(args):
     """
     we assume all partial data used the same tokenizer
     """
@@ -163,7 +161,6 @@ def merge(args):
 
     merged = dict.fromkeys(['mat', 'tokenizer', 'window_size', 'uniform_count'])
     with tqdm(total=len(args.cooccurfiles), ncols=80, disable=args.quiet) as prog:
-        prev_nnz = 0
         for file in args.cooccurfiles:
             # load the data
             corpus = load_corpus(file)
@@ -214,8 +211,8 @@ def main():
     args = parse_arguments()
 
     if args.command == 'build':
-        build(args)
+        build_cooccur(args)
     elif args.command == 'merge':
-        merge(args)
+        merge_cooccur(args)
     else:
         ValueError('[ERROR] only `build` and `merge` are supported!')

@@ -1,0 +1,35 @@
+{
+    "ranges": {
+        "window_size_factor2": {"type": "integer", "low": 2,    "high": 7,    "prior": null},
+        "n_components_log2":   {"type": "integer", "low": 4,    "high": 9,    "prior": null},
+        "n_iters":             {"type": "integer", "low": 10,   "high": 120,  "prior": null},
+        "alpha":               {"type": "real",    "low": 0.5,  "high": 1,    "prior": "log-uniform"},
+        "x_max":               {"type": "real",    "low": 1e+1, "high": 1e+2, "prior": "log-uniform"},
+        "l2":                  {"type": "real",    "low": 1e-8, "high": 1e+2, "prior": "log-uniform"},
+        "lr":                  {"type": "real",    "low": 1e-3, "high": 1e-1, "prior": "log-uniform"},
+        "init":                {"type": "real",    "low": 1e-3, "high": 1e+1, "prior": "log-uniform"},
+        "share_params":        {"type": "categorical", "categories": [true, false]},
+        "solver":              {"type": "categorical", "categories": ["als", "sgd"]}
+    },
+    "defaults": {
+        "window_size_factor2": 11,
+        "n_components_log2":   32,
+        "n_iters":             15,
+        "alpha":               0.75,
+        "x_max":               100,
+        "l2":                  1e-8,
+        "lr":                  1e-2,
+        "init":                1e-2,
+        "share_params":        true,
+        "solver":              "sgd"
+    },
+    "search_targets": [
+        "window_size_factors2",
+        "n_components_log2",
+        "n_iters",
+        "alpha",
+        "x_max",
+        "l2",
+        "init"
+    ]
+}

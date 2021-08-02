@@ -113,8 +113,8 @@ def compute_cooccurrence(path_or_lines: Union[str, list[str]],
     if verbose:
         # get the line number of the text to check progress
         if is_text_file:
-            num_lines = Path(path_or_lines).stat().st_size
-            # num_lines = count_lines(path_or_lines)
+            # num_lines = Path(path_or_lines).stat().st_size
+            num_lines = count_lines(path_or_lines)
         else:
             num_lines = len(lines)
     else:

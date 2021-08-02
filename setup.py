@@ -118,6 +118,7 @@ def readme():
     with open('README.md') as f:
         return f.read()
 
+
 def requirements():
     with open('requirements.txt') as f:
         return [line.strip() for line in f]
@@ -151,7 +152,7 @@ setup(name=NAME,
       entry_points = {
           'console_scripts': [
               'cooccur=gloves.cli.cooccur:main',
-              'learntoken=gloves.cli.learntoken:main'
+              'gloves=gloves.cli.main:main'
           ],
       },
       test_suite='tests',
