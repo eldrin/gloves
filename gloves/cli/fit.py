@@ -287,7 +287,7 @@ def opthyper(args):
     glove = fit_model(corpus.mat, num_threads=args.num_threads, **params)
 
     # save the results to disk
-    glove.save(join(args.out_path, args.out))
+    glove.save(join(args.path, args.out))
 
 
 def fit(args):
@@ -322,4 +322,4 @@ def fit(args):
     glove.fit(corpus.mat, verbose=not args.quiet)
 
     # save the results to disk
-    glove.save(join(args.out_path, args.out))
+    glove.save(join(args.path, args.out))
