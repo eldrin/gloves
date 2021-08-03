@@ -1,11 +1,13 @@
 import os
-from os.path import exists
+import json
+from os.path import exists, splitext
 from pathlib import Path
 from typing import Optional, Union, TextIO
 import pickle as pkl
 from collections import defaultdict
 from multiprocessing import Pool
 from functools import partial
+import logging
 import mmap
 
 from scipy import sparse as sp
@@ -13,6 +15,9 @@ from tokenizers import Tokenizer
 from tqdm import tqdm
 
 from ..utils import init_tokenizer, count_lines
+
+
+logger = logging.getLogger(__name__ + '.corpus')
 
 
 class Corpus:
@@ -71,6 +76,8 @@ class Corpus:
     def save(self, out_fn: str) -> None:
         """ save the processed corpus file to the disk
         """
+        # we separate the tokenizer and corpus, if custom tokenizer is used
+        logger.info('Saving corpus...')
         with open(out_fn, 'wb') as fp:
             pkl.dump(
                 {
@@ -85,6 +92,12 @@ class Corpus:
                 },
                 fp
             )
+
+        logger.info('Saving tokenizer separately...')
+        rest, ext = splitext(out_fn)
+        tokenizer_fn = rest + '_tokenizer.json'
+        with open(tokenizer_fn, 'w') as fp:
+            json.dump(self._tokenizer.to_str(), fp)
 
 
 def compute_cooccurrence(path_or_lines: Union[str, list[str]],

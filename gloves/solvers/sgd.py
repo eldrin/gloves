@@ -6,8 +6,7 @@ from . import _sgd
 from .base import SolverBase
 
 
-SEARCHABLES = {'n_components', 'lr', 'n_iters', 'alpha',
-               'x_max', 'share_params'}
+UNSEARCHABLES = {'l2', 'init'}
 
 
 class SGD(SolverBase):

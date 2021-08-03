@@ -15,7 +15,7 @@ from .fit import opthyper, fit
 from ..corpus import load_corpus
 from ..model import GloVe
 from ..evaluation import compute_scores, compute_similarities
-from ..utils import load_faruqui_wordsim_evalset
+from ..utils import load_faruqui_wordsim_evalset, init_tokenizer
 
 
 logging.basicConfig()
@@ -47,6 +47,11 @@ def parse_arguments():
     base_subparser.add_argument("--quiet", default=True,
                                 action=argparse.BooleanOptionalAction,
                                 help="set verbosity")
+
+    base_subparser.add_argument('-j', '--num-threads', type=int, default=1,
+                                help=('number of cores to be used for the parallelism. '
+                                      'only used for `optimize` and `train`'))
+
 
     # `tokenizer` sub command =================================================
     tokenizer = subparsers.add_parser('tokenizer',
@@ -121,9 +126,6 @@ def parse_arguments():
     train.add_argument('--learning-rate', type=float, default=1e-2,
                        help='learning rate (only for SGD solver)')
 
-    train.add_argument('--num-threads', type=int, default=1,
-                       help='number of cores to be used for the parallelism')
-
     train.add_argument("--share-params", default=True,
                        action=argparse.BooleanOptionalAction,
                        help="determine use 2 sets of embeddings or one for words")
@@ -133,8 +135,8 @@ def parse_arguments():
                                      parents=[base_subparser],
                                      help='evaluate a trained GloVe model')
 
-    evaluate.add_argument('data', type=str,
-                          help='path for the dir contains pre-processed datasets')
+    evaluate.add_argument('tokenizer', type=str,
+                          help='path for the tokenizer dump (.json)')
 
     evaluate.add_argument('model', type=str,
                           help='path for the trained GloVe model')
@@ -157,14 +159,17 @@ def main():
 
         # load model
         glove = GloVe.from_file(args.model)
-        corpus = load_corpus(args.data)
+        tokenizer = init_tokenizer(path=args.tokenizer)
+        glove.set_tokenizer(tokenizer)
+
         valid = load_faruqui_wordsim_evalset()
-        preds = compute_similarities(glove, corpus._tokenizer, valid,
-                                     corpus._tokenizer.get_vocab())
+        preds = compute_similarities(glove, tokenizer, valid,
+                                     tokenizer.get_vocab())
         scores = compute_scores(valid, preds)
         score = sum([v['corr'] for k, v in scores.items()]) / len(scores)
 
         # print results
+        print()
         print(f'[Word-sim Averaged Correlation]: {score:.4f}')
         print('=' * (15 + 6 + 6 + 10 + 8))
         print(f"{'dataset':<15}  {'rho':<6}  {'p':<6}  {'missing(%)':<6}")
@@ -172,6 +177,7 @@ def main():
         for dataset, result in scores.items():
             print(f"{dataset:<15}  {result['corr']:.4f}  " +
                   f"{result['p']:.4f}  {result['nan_rate']:.2%}")
+        print()
 
     else:
         ValueError('[ERROR] only `tokenizer`, `optimize` '

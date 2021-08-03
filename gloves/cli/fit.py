@@ -47,10 +47,9 @@ from gloves.files import default_opthyper_config
 
 logger = logging.getLogger('Training')
 
-
-NUM_THREADS = int(os.environ['NUMBA_NUM_THREADS'])
-RAND_STATE = os.environ.get('GLOVES_OPTHYPER_RAND_STATE')
-
+RAND_STATE = os.environ.get('GLOVES_OPTIMIZE_RAND_STATE')
+if RAND_STATE is not None:
+    RAND_STATE = int(RAND_STATE)
 
 FULL_DIMENSIONS = [
     'window_size_factor2',
@@ -135,9 +134,12 @@ def read_opthyper_config(config_fn: Optional[str]=None,
     # if solver is fixed parameter, filter out search space suitable for the solver
     if 'solver' not in search_targets:
         if defaults['solver'] == 'sgd':
-            search_space = [dim for dim in search_space if dim in sgd.SEARCHABLES]
+            search_space = [dim for dim in search_space
+                            if dim.name not in sgd.UNSEARCHABLES]
+
         elif defaults['solver'] == 'als':
-            search_space = [dim for dim in search_space if dim in als.SEARCHABLES]
+            search_space = [dim for dim in search_space
+                            if dim.name not in als.UNSEARCHABLES]
         else:
             raise ValueError('[ERROR] only `als` and `sgd` solver are supported!')
 
@@ -169,7 +171,7 @@ def fit_model(train_data: sp.coo_matrix,
               solver: str, n_components_log2: int,
               n_iters: int, alpha: float, x_max: float,
               lr: float, l2: float, init: float,
-              share_params: bool) -> GloVe:
+              share_params: bool, num_threads: int, **kwargs) -> GloVe:
     """
     """
     # initiate and fit model
@@ -186,7 +188,7 @@ def fit_model(train_data: sp.coo_matrix,
         solver=solver,
         dtype=np.float32,
         share_params=share_params,
-        num_threads=NUM_THREADS,
+        num_threads=num_threads,
         random_state=RAND_STATE
     )
     glove.fit(train_data, verbose=True)
@@ -199,18 +201,19 @@ def _objective(params: dict,
                data_fns: list[str],
                search_space: list[Dimension],
                eval_type: str,
+               num_threads: int=1,
                failure_score: float = 1e+3) -> float:
     """
     """
+    params = {dim.name: param for dim, param in zip(search_space, params)}
     # fill the ones that are not searchable
-    params = point_asdict(search_space, params)
     params.update(fixed_params)
 
     # prep data and fit the model
     train, valid, corpus = prep_dataset(params['window_size_factor2'],
                                         data_fns,
                                         eval_type)
-    glove = fit_model(train, **params)
+    glove = fit_model(train, num_threads=num_threads, **params)
 
     # check the model fit failed (numerically)
     if glove.is_unhealthy or not hasattr(glove, 'embeddings_'):
@@ -261,7 +264,8 @@ def opthyper(args):
                 fixed_params=defaults,
                 search_space=search_space,
                 data_fns=fns,
-                eval_type=args.eval_set),
+                eval_type=args.eval_set,
+                num_threads=args.num_threads),
         search_space,
         n_calls=args.n_calls,
         random_state=RAND_STATE,
@@ -273,14 +277,14 @@ def opthyper(args):
                join(args.out_path, 'search_result.skopt'),
                store_objective=False)
 
-    # fit final model
-    params = point_asdict(search_space, res_gp['x'])  # optimal setup
+    # fit final model with the optimal setup
+    params = {dim.name: param for dim, param in zip(search_space, res_gp['x'])}
     params.update(defaults)
 
     # load data and fit the model
     win_sz = params['window_size_factor2'] * 2 - 1
     corpus = load_corpus(fns[win_sz])
-    glove = fit_model(corpus.mat, **params)
+    glove = fit_model(corpus.mat, num_threads=args.num_threads, **params)
 
     # save the results to disk
     glove.save(join(args.out_path, args.out))

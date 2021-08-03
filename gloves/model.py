@@ -34,7 +34,15 @@ class GloVe(object):
         self.use_native = use_native
         self.share_params = share_params
         self.num_threads = num_threads
-        self._tokenizer = init_tokenizer() if tokenizer is None else tokenizer
+
+        if tokenizer is None:
+            logger.warning('[Warning] tokenizer is not given. '
+                           'intializing default tokenizer...')
+            self._tokenizer = init_tokenizer()
+            self._using_default_tokenizer = True
+        else:
+            self._tokenizer = tokenizer
+            self._using_default_tokenizer = False
 
         # set solver
         if solver == 'als':

@@ -24,7 +24,7 @@
         "solver":              "sgd"
     },
     "search_targets": [
-        "window_size_factors2",
+        "window_size_factor2",
         "n_components_log2",
         "n_iters",
         "alpha",

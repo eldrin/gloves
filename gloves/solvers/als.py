@@ -6,9 +6,7 @@ from . import _als
 from .base import SolverBase, transform
 
 
-SEARCHABLES = {'n_components', 'l2', 'init', 'n_iters', 'alpha',
-               'x_max', 'share_params'}
-
+UNSEARCHABLES = {'lr', 'max_loss'}
 
 
 class ALS(SolverBase):
