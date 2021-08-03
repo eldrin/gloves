@@ -95,9 +95,9 @@ class Corpus:
 
         logger.info('Saving tokenizer separately...')
         rest, ext = splitext(out_fn)
-        tokenizer_fn = rest + '_tokenizer.json'
+        tokenizer_fn = rest + '.tokenizer'
         with open(tokenizer_fn, 'w') as fp:
-            json.dump(self._tokenizer.to_str(), fp)
+            f.write(self._tokenizer.to_str())
 
 
 def compute_cooccurrence(path_or_lines: Union[str, list[str]],

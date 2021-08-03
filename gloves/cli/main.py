@@ -72,9 +72,6 @@ def parse_arguments():
     optimize.add_argument('data_path', type=str,
                           help='path for the dir contains pre-processed datasets')
 
-    optimize.add_argument('out_path', type=str,
-                          help='path of the resulting search result and model')
-
     optimize.add_argument('--config', type=str, default=None,
                           help='path for the configuration file')
 
@@ -96,9 +93,6 @@ def parse_arguments():
 
     train.add_argument('data', type=str,
                        help='path for the pre-processed cooccurrence dataset')
-
-    train.add_argument('out_path', type=str,
-                       help='path of the resulting search result and model')
 
     train.add_argument('--n-components', type=int, default=32,
                        help='size of latent dimenions')

@@ -23,8 +23,8 @@ try:
 except ModuleNotFoundError:
     print('[ERROR] `scikit-optimize` is not found in the python environment! '
           'install the package in your environment manually or '
-          're-install `gloves` with `opthyper` extra keyword. '
-          '(i.e., pip install gloves[opthyper])')
+          're-install `gloves` with `optimize` extra keyword. '
+          '(i.e., pip install gloves[optimize])')
     print('Exiting...')
     raise SystemExit()
 
