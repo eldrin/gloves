@@ -24,8 +24,9 @@ done
 # search the best model
 gloves optimize \
     -o final_model.glv.mdl \
+    -p $DATA_PATH
     --data-filename-template 'text8.ws{window_size:d}.cooccur.pkl' \
     --n-calls 50 \
     --eval-set 'faruqui' \
-    $DATA_PATH $DATA_PATH
+    $DATA_PATH
 

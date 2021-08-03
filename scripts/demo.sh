@@ -17,7 +17,7 @@ gloves train \
     --no-quiet \
     --num-threads 8 \
     -p $DATA_PATH \
-    "${DATA_PATH}/text8.cooccur.pkl" $DATA_PATH
+    "${DATA_PATH}/text8.cooccur.pkl"
 
 # simple printout for the sanity check
 python -c "from gloves.model import GloVe
