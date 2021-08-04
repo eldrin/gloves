@@ -145,7 +145,7 @@ setup(name=NAME,
       setup_requires=["setuptools>=18.0", "Cython>=0.24"],
       extras_require={
           'dev': [],
-          'opthyper': ['scikit-optimize>=0.8.1']
+          'optimize': ['scikit-optimize>=0.8.1']
       },
       ext_modules=define_extensions(),
       cmdclass={"build_ext": build_ext},

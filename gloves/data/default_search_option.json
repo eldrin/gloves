@@ -11,8 +11,8 @@
         "solver":              {"type": "categorical", "categories": ["als", "sgd"]}
     },
     "defaults": {
-        "window_size_factor2": 11,
-        "n_components_log2":   32,
+        "window_size_factor2": 6,
+        "n_components_log2":   5,
         "n_iters":             15,
         "alpha":               0.75,
         "x_max":               100,

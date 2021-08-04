@@ -1,21 +1,5 @@
-import os
-from os.path import join, basename, splitext
-from functools import partial
-from typing import Optional
-from collections import defaultdict
 import argparse
 import logging
-import multiprocessing as mp
-import pickle as pkl
-import time
-from tqdm import tqdm
-
-from .learntoken import main as fit_tokenizer
-from .fit import opthyper, fit
-from ..corpus import load_corpus
-from ..model import GloVe
-from ..evaluation import compute_scores, compute_similarities
-from ..utils import load_faruqui_wordsim_evalset, init_tokenizer
 
 
 logging.basicConfig()
@@ -144,12 +128,25 @@ def main():
     args = parse_arguments()
 
     if args.command == 'tokenizer':
+
+        from .learntoken import main as fit_tokenizer
         fit_tokenizer(args)
+
     elif args.command == 'optimize':
-        opthyper(args)
+
+        from .optimize import optimize
+        optimize(args)
+
     elif args.command == 'train':
+
+        from .fit import fit
         fit(args)
+
     elif args.command == 'evaluate':
+
+        from ..model import GloVe
+        from ..evaluation import compute_scores, compute_similarities
+        from ..utils import load_faruqui_wordsim_evalset, init_tokenizer
 
         # load model
         glove = GloVe.from_file(args.model)
@@ -174,5 +171,5 @@ def main():
         print()
 
     else:
-        ValueError('[ERROR] only `tokenizer`, `optimize` '
-                   'and `train` are supported!')
+        ValueError('[ERROR] only `tokenizer`, `optimize`, `train`,'
+                   'and `evaluate` are supported!')

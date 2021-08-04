@@ -21,8 +21,8 @@ def faruqui_wordsim_evalset_url():
     return 'https://api.github.com/repos/mfaruqui/eval-word-vectors/tarball/v1.0'
 
 
-def default_opthyper_config():
-    """ read the filename of default `opthyper` config file
+def default_optimize_config():
+    """ read the filename of default `optimize` config file
     """
     return pkg_resources.resource_filename(
         __name__, join('data', DEFAULT_OPTHYPER_FN)
