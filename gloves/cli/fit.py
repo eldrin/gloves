@@ -1,5 +1,5 @@
 import os
-from os.path import dirname, basename, join, splitext
+from os.path import join
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 if 'NUMBA_NUM_THREADS' not in os.environ:

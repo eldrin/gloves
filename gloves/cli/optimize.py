@@ -34,6 +34,8 @@ from gloves.corpus import Corpus, load_corpus
 from gloves.utils import load_faruqui_wordsim_evalset as load_eval_dataset
 from gloves.files import default_optimize_config
 
+from .fit import fit_model
+
 
 logger = logging.getLogger('Optimize')
 
@@ -238,7 +240,7 @@ def optimize(args):
 
     # save search result
     skopt.dump(res_gp,
-               join(args.out_path, 'search_result.skopt'),
+               join(args.path, 'search_result.skopt'),
                store_objective=False)
 
     # fit final model with the optimal setup
