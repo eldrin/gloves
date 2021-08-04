@@ -15,7 +15,7 @@ class GloVe(object):
     """
     """
     def __init__(self, n_components,
-                 n_iters=15, init=1e-2, alpha=3/4., x_max=100, solver='als',
+                 n_iters=15, alpha=3/4., x_max=100, solver='als',
                  l2=1e-3, learning_rate=0.1, max_loss=10., share_params=True,
                  use_native=True, dtype=np.float32, random_state=None,
                  num_threads=0, tokenizer=None) -> None:
@@ -23,7 +23,6 @@ class GloVe(object):
         """
         self.n_components = n_components
         self.l2 = l2
-        self.init = init
         self.learning_rate = learning_rate
         self.max_loss = max_loss
         self.n_iters = n_iters
@@ -46,7 +45,7 @@ class GloVe(object):
 
         # set solver
         if solver == 'als':
-            self.solver = ALS(n_components, l2, init, n_iters, alpha, x_max,
+            self.solver = ALS(n_components, l2, n_iters, alpha, x_max,
                               use_native, share_params, dtype, random_state,
                               num_threads)
         elif solver == 'sgd':
@@ -142,7 +141,6 @@ class GloVe(object):
         configs = {
             'n_components': self.n_components,
             'l2': self.l2,
-            'init': self.init,
             'learning_rate': self.learning_rate,
             'max_loss': self.max_loss,
             'n_iters': self.n_iters,

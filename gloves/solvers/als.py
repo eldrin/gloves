@@ -10,34 +10,13 @@ UNSEARCHABLES = {'lr', 'max_loss'}
 
 
 class ALS(SolverBase):
-    def __init__(self, n_components, l2=1e-3, init=1e-2, n_iters=15,
+    def __init__(self, n_components, l2=1e-3, n_iters=15,
                  alpha=3/4., x_max=100, use_native=True, share_params=True,
                  dtype=np.float32, random_state=None, num_threads=0):
         """
         """
         super().__init__(n_components, l2, n_iters, alpha, x_max, use_native,
                          share_params, dtype, random_state, num_threads)
-        self.init = init
-
-    def _init_params(self, n: int) -> None:
-        """ this is experimental initialize method
-
-        -> in the end, all these can be irrelevant and `share_params`
-           might only make difference...
-
-        [x] weighted as similar to what Glorot (2010a) -> different result
-        [ ] learn the prior variation through GP
-        """
-        # init vectors
-        # W = self.rng.rand(n, self.n_components).astype(self.dtype)
-        # W = (((W - .5) * 2.) * 6**.5) / (self.n_components**.5)
-        W = self.rng.randn(n, self.n_components) * self.init
-        W = W.astype(self.dtype)
-
-        # init bias
-        b = np.zeros((n,), dtype=self.dtype)
-
-        return W, b
 
     def fit(self, X, verbose=True, compute_loss=False):
         """

@@ -59,7 +59,6 @@ FULL_DIMENSIONS = [
     'x_max',
     'l2',
     'lr',
-    'init',
     'share_params',
     'solver'
 ]
@@ -180,7 +179,6 @@ def fit_model(train_data: sp.coo_matrix,
     glove = GloVe(
         n_components=d,
         n_iters=n_iters,
-        init=init,
         learning_rate=lr,
         l2=l2,
         alpha=alpha,
