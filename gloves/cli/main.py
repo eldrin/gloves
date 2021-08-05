@@ -98,9 +98,6 @@ def parse_arguments():
     train.add_argument('--l2', type=float, default=1e-4,
                        help='L2 regularzation coefficient (only for ALS solver)')
 
-    train.add_argument('--init', type=float, default=1e-2,
-                       help='initialization weight (only for ALS solver)')
-
     train.add_argument('--learning-rate', type=float, default=1e-2,
                        help='learning rate (only for SGD solver)')
 

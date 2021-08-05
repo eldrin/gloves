@@ -1,3 +1,4 @@
+from typing import Optional
 import os
 from os.path import join
 os.environ['MKL_NUM_THREADS'] = '1'
@@ -24,8 +25,9 @@ if RAND_STATE is not None:
 def fit_model(train_data: sp.coo_matrix,
               solver: str, n_components_log2: int,
               n_iters: int, alpha: float, x_max: float,
-              lr: float, l2: float,
-              share_params: bool, num_threads: int, **kwargs) -> GloVe:
+              share_params: bool, num_threads: int,
+              lr: Optional[float]=None, l2: Optional[float]=None,
+              **kwargs) -> GloVe:
     """
     """
     # initiate and fit model
@@ -69,7 +71,6 @@ def fit(args):
     corpus = load_corpus(args.data)
     glove = GloVe(args.n_components,
                   args.n_iters,
-                  args.init,
                   args.alpha,
                   args.x_max,
                   args.solver,

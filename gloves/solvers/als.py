@@ -18,15 +18,13 @@ class ALS(SolverBase):
         super().__init__(n_components, l2, n_iters, alpha, x_max, use_native,
                          share_params, dtype, random_state, num_threads)
 
-    def fit(self, X, verbose=True, compute_loss=False):
+    def fit(self, X, verbose=True):
         """
         """
         # force to convert
+        X = X.astype(self.dtype)
         if not sp.isspmatrix_csr(X):
             X = X.tocsr()
-
-        # transform input data
-        X_, C_ = transform(X, self.x_max, self.alpha, self.dtype)
 
         # initialize parameters
         N = X.shape[0]
@@ -41,41 +39,37 @@ class ALS(SolverBase):
             self.embeddings_.update(dict(H=H, bj=bj))
 
         # compute error matrix
-        E_ = X_.copy()
-        self.compute_error(X_, E_,
+        E = X.copy().astype('float32')
+        self.compute_error(X, E,
                            self.embeddings_['W'], self.embeddings_['H'],
-                           self.embeddings_['bi'], self.embeddings_['bj'])
+                           self.embeddings_['bi'], self.embeddings_['bj'],
+                           num_threads=self.num_threads)
 
-        # TODO: we might not actually need to track `confidence` matrix
-        # maybe it's trivial computational gain compared to the memory
-        Ct_ = C_.T.tocsr()
-
-        if compute_loss:
-            self.losses = [np.mean(C_.data * E_.data**2)]
-
+        # from now on, it's containing the confidence
+        X.data = np.minimum(1., X.data / self.x_max) ** self.alpha
+        Xt = X.T.tocsr()
         with tqdm(total=self.n_iters, ncols=80, disable=not verbose) as prog:
             for n in range(self.n_iters):
 
-                self.solver(C_, E_,
+                self.solver(X, E,
                             self.embeddings_['W'],
                             self.embeddings_['H'].copy(),
-                            self.embeddings_['bi'], self.l2,
+                            self.embeddings_['bi'],
+                            self.l2, self.alpha, self.x_max,
                             num_threads=self.num_threads)
-                Et_ = E_.T.tocsr()
+                Et = E.T.tocsr()
 
-                self.solver(Ct_, Et_,
+                self.solver(Xt, Et,
                             self.embeddings_['H'],
                             self.embeddings_['W'].copy(),
-                            self.embeddings_['bj'], self.l2,
+                            self.embeddings_['bj'],
+                            self.l2, self.alpha, self.x_max,
                             num_threads=self.num_threads)
-                E_ = Et_.T.tocsr()
+                E = Et.T.tocsr()
 
                 if self._is_unhealthy():
                     print('[ERROR] Training failed! nan or inf found')
                     break
-
-                if compute_loss:
-                    self.losses.append(np.mean(C_.data * E_.data**2))
                 prog.update()
 
     @property
