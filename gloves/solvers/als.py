@@ -47,7 +47,6 @@ class ALS(SolverBase):
 
         # from now on, it's containing the confidence
         X.data = np.minimum(1., X.data / self.x_max) ** self.alpha
-        Xt = X.T.tocsr()
         with tqdm(total=self.n_iters, ncols=80, disable=not verbose) as prog:
             for n in range(self.n_iters):
 
@@ -57,15 +56,17 @@ class ALS(SolverBase):
                             self.embeddings_['bi'],
                             self.l2, self.alpha, self.x_max,
                             num_threads=self.num_threads)
-                Et = E.T.tocsr()
+                X = X.T.tocsr()
+                E = E.T.tocsr()
 
-                self.solver(Xt, Et,
+                self.solver(X, E,
                             self.embeddings_['H'],
                             self.embeddings_['W'].copy(),
                             self.embeddings_['bj'],
                             self.l2, self.alpha, self.x_max,
                             num_threads=self.num_threads)
-                E = Et.T.tocsr()
+                X = X.T.tocsr()
+                E = E.T.tocsr()
 
                 if self._is_unhealthy():
                     print('[ERROR] Training failed! nan or inf found')
