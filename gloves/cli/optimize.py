@@ -25,7 +25,7 @@ from skopt import gp_minimize
 import numpy as np
 from scipy import sparse as sp
 
-from gloves.solvers import als, sgd
+from gloves.solvers import als, sgd, ials
 from gloves.evaluation import (split_data,
                                compute_similarities,
                                compute_scores,
@@ -135,6 +135,10 @@ def read_optimize_config(config_fn: Optional[str]=None,
         elif defaults['solver'] == 'als':
             search_space = [dim for dim in search_space
                             if dim.name not in als.UNSEARCHABLES]
+
+        elif defaults['solver'] == 'ials':
+            search_space = [dim for dim in search_space
+                            if dim.name not in ials.UNSEARCHABLES]
         else:
             raise ValueError('[ERROR] only `als` and `sgd` solver are supported!')
 

@@ -5,10 +5,11 @@
         "n_iters":             {"type": "integer", "low": 10,   "high": 120,  "prior": null},
         "alpha":               {"type": "real",    "low": 0.5,  "high": 1,    "prior": "log-uniform"},
         "x_max":               {"type": "real",    "low": 1e+1, "high": 1e+2, "prior": "log-uniform"},
+        "eps":                 {"type": "real",    "low": 1e-3, "high": 1e-3, "prior": "log-uniform"},
         "l2":                  {"type": "real",    "low": 1e-8, "high": 1e+2, "prior": "log-uniform"},
         "lr":                  {"type": "real",    "low": 1e-3, "high": 1e-1, "prior": "log-uniform"},
         "share_params":        {"type": "categorical", "categories": [true, false]},
-        "solver":              {"type": "categorical", "categories": ["als", "sgd"]}
+        "solver":              {"type": "categorical", "categories": ["ials", "als", "sgd"]}
     },
     "defaults": {
         "window_size_factor2": 6,
@@ -16,6 +17,7 @@
         "n_iters":             15,
         "alpha":               0.75,
         "x_max":               100,
+        "eps":                 1e+1,
         "l2":                  1e-8,
         "lr":                  1e-2,
         "share_params":        true,
@@ -27,6 +29,6 @@
         "n_iters",
         "alpha",
         "x_max",
-        "l2"
+        "lr"
     ]
 }

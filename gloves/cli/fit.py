@@ -78,7 +78,8 @@ def fit(args):
                   args.learning_rate,
                   10.,  # max loss. use defaults
                   args.share_params,
-                  num_threads=args.num_threads)
+                  num_threads=args.num_threads,
+                  eps=args.eps)
     glove.fit(corpus.mat, verbose=not args.quiet)
 
     # save the results to disk

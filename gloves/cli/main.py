@@ -82,8 +82,8 @@ def parse_arguments():
                        help='size of latent dimenions')
 
     train.add_argument('--solver', type=str, default='sgd',
-                       choices={'als', 'sgd'},
-                       help='optimization method {"als", "sgd"}')
+                       choices={'als', 'sgd', 'ials'},
+                       help='optimization method {"als", "sgd", "ials"}')
 
     train.add_argument('--n-iters', type=int, default=15,
                        help='number of epoches')
@@ -94,6 +94,10 @@ def parse_arguments():
     train.add_argument('--x-max', type=float, default=100,
                        help=('set the normalization factor (threshold) of '
                              'raw count measurement'))
+
+    train.add_argument('--eps', type=float, default=1e+0,
+                       help='second parameter for the confidence '
+                            '(only for IALS solver)')
 
     train.add_argument('--l2', type=float, default=1e-4,
                        help='L2 regularzation coefficient (only for ALS solver)')

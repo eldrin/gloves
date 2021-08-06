@@ -4,7 +4,7 @@ import numpy as np
 from scipy import sparse as sp
 from scipy.spatial.distance import cdist
 
-from .solvers import ALS, SGD
+from .solvers import ALS, SGD, IALS
 from .utils import is_symmetric, argpart_sort, init_tokenizer
 
 
@@ -18,7 +18,7 @@ class GloVe(object):
                  n_iters=15, alpha=3/4., x_max=100, solver='als',
                  l2=1e-3, learning_rate=0.1, max_loss=10., share_params=True,
                  use_native=True, dtype=np.float32, random_state=None,
-                 num_threads=0, tokenizer=None) -> None:
+                 num_threads=0, tokenizer=None, eps=1e-0) -> None:
         """
         """
         self.n_components = n_components
@@ -33,6 +33,7 @@ class GloVe(object):
         self.use_native = use_native
         self.share_params = share_params
         self.num_threads = num_threads
+        self.eps = eps
 
         if tokenizer is None:
             logger.warning('[Warning] tokenizer is not given. '
@@ -52,8 +53,12 @@ class GloVe(object):
             self.solver = SGD(n_components, learning_rate, n_iters, alpha, x_max,
                               max_loss, use_native, share_params, dtype,
                               random_state, num_threads)
+        elif solver == 'ials':
+            self.solver = IALS(n_components, l2, n_iters, alpha, eps,
+                               use_native, share_params, dtype, random_state,
+                               num_threads)
         else:
-            raise ValueError("[ERROR] only 'als', and 'sgd' are supported!")
+            raise ValueError("[ERROR] only 'als', 'sgd', and 'ials' are supported!")
 
     def set_tokenizer(self, tokenizer):
         """ set internal tokenizer
@@ -150,7 +155,8 @@ class GloVe(object):
             'solver': self.solver_type,
             'use_native': self.use_native,
             'share_params': self.share_params,
-            'num_threads': self.num_threads
+            'num_threads': self.num_threads,
+            'eps': self.eps
         }
         params = {
             'W': self.solver.embeddings_['W'],
