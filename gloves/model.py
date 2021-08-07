@@ -4,7 +4,7 @@ import numpy as np
 from scipy import sparse as sp
 from scipy.spatial.distance import cdist
 
-from .solvers import ALS, SGD
+from .solvers import ALS, SGD, IALS
 from .utils import is_symmetric, argpart_sort, init_tokenizer
 
 
@@ -15,10 +15,10 @@ class GloVe(object):
     """
     """
     def __init__(self, n_components,
-                 n_iters=15, alpha=3/4., x_max=100, solver='als',
-                 l2=1e-3, learning_rate=0.1, max_loss=10., share_params=True,
-                 use_native=True, dtype=np.float32, random_state=None,
-                 num_threads=0, tokenizer=None) -> None:
+                 n_iters=15, alpha=3/4., x_max=100, beta=1e+1, eps=1e-0,
+                 solver='als', l2=1e-3, learning_rate=0.1, max_loss=10.,
+                 share_params=True, use_native=True, dtype=np.float32,
+                 random_state=None, num_threads=0, tokenizer=None) -> None:
         """
         """
         self.n_components = n_components
@@ -28,6 +28,8 @@ class GloVe(object):
         self.n_iters = n_iters
         self.alpha = alpha
         self.x_max = x_max
+        self.beta = beta
+        self.eps = eps
         self.dtype = dtype
         self.solver_type = solver
         self.use_native = use_native
@@ -52,8 +54,12 @@ class GloVe(object):
             self.solver = SGD(n_components, learning_rate, n_iters, alpha, x_max,
                               max_loss, use_native, share_params, dtype,
                               random_state, num_threads)
+        elif solver == 'ials':
+            self.solver = IALS(n_components, l2, n_iters, beta, eps,
+                               use_native, share_params, dtype, random_state,
+                               num_threads)
         else:
-            raise ValueError("[ERROR] only 'als', and 'sgd' are supported!")
+            raise ValueError("[ERROR] only 'als', 'sgd', and 'ials' are supported!")
 
     def set_tokenizer(self, tokenizer):
         """ set internal tokenizer
@@ -146,11 +152,13 @@ class GloVe(object):
             'n_iters': self.n_iters,
             'alpha': self.alpha,
             'x_max': self.x_max,
+            'beta': self.beta,
+            'eps': self.eps,
             'dtype': self.dtype,
             'solver': self.solver_type,
             'use_native': self.use_native,
             'share_params': self.share_params,
-            'num_threads': self.num_threads
+            'num_threads': self.num_threads,
         }
         params = {
             'W': self.solver.embeddings_['W'],

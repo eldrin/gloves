@@ -53,7 +53,7 @@ def define_extensions():
             extra_compile_args=compile_args,
             extra_link_args=link_args
         )
-        for cython_module in ['_als', '_sgd']
+        for cython_module in ['_als', '_sgd', '_ials']
     ]
     modules.extend([
         Extension(
@@ -152,7 +152,8 @@ setup(name=NAME,
       entry_points = {
           'console_scripts': [
               'cooccur=gloves.cli.cooccur:main',
-              'gloves=gloves.cli.main:main'
+              'gloves=gloves.cli.main:main',
+              'fittokens=gloves.cli.learntoken:main'
           ],
       },
       test_suite='tests',

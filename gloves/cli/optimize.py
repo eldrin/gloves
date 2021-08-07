@@ -25,14 +25,17 @@ from skopt import gp_minimize
 import numpy as np
 from scipy import sparse as sp
 
-from gloves.solvers import als, sgd
+from gloves.solvers import als, sgd, ials
 from gloves.evaluation import (split_data,
                                compute_similarities,
                                compute_scores,
                                EvaluationSet)
 from gloves.corpus import Corpus, load_corpus
-from gloves.utils import load_faruqui_wordsim_evalset as load_eval_dataset
+from gloves.utils import (load_faruqui_wordsim_evalset as load_eval_dataset,
+                          init_tokenizer)
 from gloves.files import default_optimize_config
+
+from tokenizers import Tokenizer
 
 from .fit import fit_model
 
@@ -50,6 +53,8 @@ FULL_DIMENSIONS = [
     'n_iters',
     'alpha',
     'x_max',
+    'beta',
+    'eps',
     'l2',
     'lr',
     'share_params',
@@ -135,6 +140,10 @@ def read_optimize_config(config_fn: Optional[str]=None,
         elif defaults['solver'] == 'als':
             search_space = [dim for dim in search_space
                             if dim.name not in als.UNSEARCHABLES]
+
+        elif defaults['solver'] == 'ials':
+            search_space = [dim for dim in search_space
+                            if dim.name not in ials.UNSEARCHABLES]
         else:
             raise ValueError('[ERROR] only `als` and `sgd` solver are supported!')
 
@@ -143,7 +152,7 @@ def read_optimize_config(config_fn: Optional[str]=None,
 
 def prep_dataset(window_size_factor2: int,
                  data_fns: list[str],
-                 eval_type: str) -> tuple[sp.coo_matrix, EvaluationSet, Corpus]:
+                 eval_type: str) -> tuple[sp.coo_matrix, EvaluationSet]:
     """
     """
     # load data
@@ -159,7 +168,7 @@ def prep_dataset(window_size_factor2: int,
         train = corpus.mat
         valid = load_eval_dataset()
 
-    return train, valid, corpus
+    return train, valid
 
 
 def _objective(params: dict,
@@ -167,6 +176,7 @@ def _objective(params: dict,
                data_fns: list[str],
                search_space: list[Dimension],
                eval_type: str,
+               tokenizer: Tokenizer,
                num_threads: int=1,
                failure_score: float = 1e+3) -> float:
     """
@@ -176,10 +186,12 @@ def _objective(params: dict,
     params.update(fixed_params)
 
     # prep data and fit the model
-    train, valid, corpus = prep_dataset(params['window_size_factor2'],
-                                        data_fns,
-                                        eval_type)
-    glove = fit_model(train, num_threads=num_threads, **params)
+    train, valid = prep_dataset(params['window_size_factor2'],
+                                data_fns, eval_type)
+    glove = fit_model(train,
+                      num_threads=num_threads,
+                      tokenizer=tokenizer,
+                      **params)
 
     # check the model fit failed (numerically)
     if glove.is_unhealthy or not hasattr(glove, 'embeddings_'):
@@ -191,8 +203,8 @@ def _objective(params: dict,
     if eval_type == 'split':
         score = -glove.score(valid, weighted=False)  # MSE (the lower the better)
     else:
-        predictions = compute_similarities(glove, corpus._tokenizer, valid,
-                                           corpus._tokenizer.get_vocab())
+        predictions = compute_similarities(glove, tokenizer, valid,
+                                           tokenizer.get_vocab())
         scores = compute_scores(valid, predictions)
         score = np.mean([v['corr'] for k, v in scores.items()])
 
@@ -206,6 +218,8 @@ def optimize(args):
     """
     arguments:
         data_path: directory where cooccurrence datasets are stored
+        tokenizer: tokenizer path (.json).
+                   (default: None, which uses the default tokenizer)
         config: custom search configuration file (.json)
         out_path: path to save search result and final model
         eval_set: validation target {'split', 'faruqui'}
@@ -213,6 +227,9 @@ def optimize(args):
         data_filename_template: dataset filename template
                                 (for various window sizes)
     """
+    # initialize tokenizer
+    tokenizer = init_tokenizer(args.tokenizer)
+
     # load the config
     search_space, defaults = read_optimize_config(args.config)
 
@@ -231,11 +248,12 @@ def optimize(args):
                 search_space=search_space,
                 data_fns=fns,
                 eval_type=args.eval_set,
-                num_threads=args.num_threads),
+                num_threads=args.num_threads,
+                tokenizer=tokenizer),
         search_space,
         n_calls=args.n_calls,
         random_state=RAND_STATE,
-        verbose=True
+        verbose=not args.quiet
     )
 
     # save search result
@@ -250,7 +268,10 @@ def optimize(args):
     # load data and fit the model
     win_sz = params['window_size_factor2'] * 2 - 1
     corpus = load_corpus(fns[win_sz])
-    glove = fit_model(corpus.mat, num_threads=args.num_threads, **params)
+    glove = fit_model(corpus.mat,
+                      num_threads=args.num_threads,
+                      tokenizer=tokenizer,
+                      **params)
 
     # save the results to disk
     glove.save(join(args.path, args.out))

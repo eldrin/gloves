@@ -15,6 +15,34 @@ logging.basicConfig()
 logger = logging.getLogger("LearnTokenizer")
 
 
+def parse_arguments():
+    """
+    """
+    parser = argparse.ArgumentParser(
+        prog="FitTokenizer",
+        description="A simple wrapper fits huggingface BPE tokenzer"
+    )
+
+    parser.add_argument("textfile", type=str,
+                        help="text file to be fit tokenizer")
+
+    parser.add_argument("-n", "--num-tokens", type=int, default=20_000,
+                        help="number of tokens to be fitted")
+
+    parser.add_argument("-o", "--out", type=str,
+                        default='output',
+                        help="output filename.")
+
+    parser.add_argument("-p", "--path", type=str, default="./",
+                        help="path where the output stored")
+
+    parser.add_argument("--quiet", default=True,
+                        action=argparse.BooleanOptionalAction,
+                        help="set verbosity")
+
+    return parser.parse_args()
+
+
 def train_tokenizer(text_fn: str,
                     out_fn: Optional[str]=None,
                     vocab_size: int=300_000,
@@ -45,9 +73,11 @@ def train_tokenizer(text_fn: str,
     return tokenizer
 
 
-def main(args):
+def main():
     """
     """
+    args = parse_arguments()
+
     verbose = not args.quiet
     if verbose:
         logger.setLevel(logging.INFO)
