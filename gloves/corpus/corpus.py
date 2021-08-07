@@ -97,7 +97,7 @@ class Corpus:
         rest, ext = splitext(out_fn)
         tokenizer_fn = rest + '.tokenizer'
         with open(tokenizer_fn, 'w') as fp:
-            f.write(self._tokenizer.to_str())
+            fp.write(self._tokenizer.to_str())
 
 
 def compute_cooccurrence(path_or_lines: Union[str, list[str]],
