@@ -13,6 +13,9 @@ from scipy import sparse as sp
 
 from gloves.model import GloVe
 from gloves.corpus import load_corpus
+from gloves.utils import init_tokenizer
+
+from tokenizers import Tokenizer
 
 
 logger = logging.getLogger('Training')
@@ -24,8 +27,8 @@ if RAND_STATE is not None:
 
 def fit_model(train_data: sp.coo_matrix,
               solver: str, n_components_log2: int,
-              n_iters: int, alpha: float, x_max: float,
-              share_params: bool, num_threads: int,
+              n_iters: int, alpha: float, x_max: float, beta: float, eps: float,
+              share_params: bool, num_threads: int, tokenizer: Tokenizer,
               lr: Optional[float]=None, l2: Optional[float]=None,
               **kwargs) -> GloVe:
     """
@@ -34,17 +37,20 @@ def fit_model(train_data: sp.coo_matrix,
     d = int(2**n_components_log2)
 
     glove = GloVe(
-        n_components=d,
-        n_iters=n_iters,
-        learning_rate=lr,
-        l2=l2,
-        alpha=alpha,
-        x_max=x_max,
-        solver=solver,
-        dtype=np.float32,
-        share_params=share_params,
-        num_threads=num_threads,
-        random_state=RAND_STATE
+        n_components  = d,
+        n_iters       = n_iters,
+        learning_rate = lr,
+        l2            = l2,
+        alpha         = alpha,
+        x_max         = x_max,
+        beta          = beta,
+        eps           = eps,
+        solver        = solver,
+        dtype         = np.float32,
+        share_params  = share_params,
+        num_threads   = num_threads,
+        random_state  = RAND_STATE,
+        tokenizer     = tokenizer
     )
     glove.fit(train_data, verbose=True)
 
@@ -68,18 +74,21 @@ def fit(args):
         num_threads: control parallelization (num cores)
         quiet: set verbosity
     """
+    tokenizer = init_tokenizer(args.tokenizer)
     corpus = load_corpus(args.data)
-    glove = GloVe(args.n_components,
-                  args.n_iters,
-                  args.alpha,
-                  args.x_max,
-                  args.solver,
-                  args.l2,
-                  args.learning_rate,
-                  10.,  # max loss. use defaults
-                  args.share_params,
-                  num_threads=args.num_threads,
-                  eps=args.eps)
+    glove = GloVe(n_components  = args.n_components,
+                  n_iters       = args.n_iters,
+                  alpha         = args.alpha,
+                  x_max         = args.x_max,
+                  beta          = args.beta,
+                  eps           = args.eps,
+                  solver        = args.solver,
+                  l2            = args.l2,
+                  learning_rate = args.learning_rate,
+                  max_loss      = 10.,  # max loss. use defaults
+                  share_params  = args.share_params,
+                  num_threads   = args.num_threads,
+                  tokenizer     = tokenizer)
     glove.fit(corpus.mat, verbose=not args.quiet)
 
     # save the results to disk

@@ -22,7 +22,7 @@ def parse_arguments():
     base_subparser = argparse.ArgumentParser(add_help=False)
 
     base_subparser.add_argument("-o", "--out", type=str,
-                                default='output.pkl',
+                                default='output',
                                 help="output filename.")
 
     base_subparser.add_argument("-p", "--path", type=str, default="./",
@@ -36,17 +36,9 @@ def parse_arguments():
                                 help=('number of cores to be used for the parallelism. '
                                       'only used for `optimize` and `train`'))
 
-
-    # `tokenizer` sub command =================================================
-    tokenizer = subparsers.add_parser('tokenizer',
-                                      parents=[base_subparser],
-                                      help='fit tokenizer')
-
-    tokenizer.add_argument("textfile", type=str,
-                           help="text file to be fit tokenizer")
-
-    tokenizer.add_argument("-n", "--num-tokens", type=int, default=20_000,
-                           help="number of tokens to be fitted")
+    base_subparser.add_argument('-k', '--tokenizer', type=str, default=None,
+                                help=('path for the tokenizer dump (.json)',
+                                      "if not given, uses the default tokenizer of the package"))
 
     # `optimize` sub command =================================================
     optimize = subparsers.add_parser('optimize',
@@ -95,8 +87,12 @@ def parse_arguments():
                        help=('set the normalization factor (threshold) of '
                              'raw count measurement'))
 
-    train.add_argument('--eps', type=float, default=1e+0,
-                       help='second parameter for the confidence '
+    train.add_argument('--beta', type=float, default=1e+1,
+                       help='main weight for the IALS confidence '
+                            '(only for IALS solver)')
+
+    train.add_argument('--eps', type=float, default=1e-2,
+                       help='second weight factor for the IALS confidence '
                             '(only for IALS solver)')
 
     train.add_argument('--l2', type=float, default=1e-4,
@@ -114,9 +110,6 @@ def parse_arguments():
                                      parents=[base_subparser],
                                      help='evaluate a trained GloVe model')
 
-    evaluate.add_argument('tokenizer', type=str,
-                          help='path for the tokenizer dump (.json)')
-
     evaluate.add_argument('model', type=str,
                           help='path for the trained GloVe model')
 
@@ -128,12 +121,7 @@ def main():
     """
     args = parse_arguments()
 
-    if args.command == 'tokenizer':
-
-        from .learntoken import main as fit_tokenizer
-        fit_tokenizer(args)
-
-    elif args.command == 'optimize':
+    if args.command == 'optimize':
 
         from .optimize import optimize
         optimize(args)

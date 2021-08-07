@@ -1,3 +1,7 @@
+# This module is largely copy-and-paste of least square function of `implicit` package
+# (https://github.com/eldrin/implicit/blob/master/implicit/cpu/_als.pyx)
+# go check the original implementation.
+
 import cython
 import numpy as np
 
@@ -11,9 +15,6 @@ cimport scipy.linalg.cython_blas as cython_blas
 cimport scipy.linalg.cython_lapack as cython_lapack
 from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy, memset
-
-# This module is largely copy-and-paste of least square function of `implicit` package
-# (https://github.com/eldrin/implicit/blob/master/implicit/cpu/_als.pyx)
 
 
 # lapack/blas wrappers for cython fused types
@@ -95,6 +96,10 @@ def _least_squares_cg(integral[:] indptr, integral[:] indices, float[:] data,
 
                 # if we have no items for this user, skip and set to zero
                 if indptr[u] == indptr[u+1]:
+                    # NOTE: we don't zero-out no-interaction entity, which is the only difference
+                    #       from `implicit`s original implementation. It prevents an embedding
+                    #       is forcefully zero out when its "transposed" side has interaction
+                    #       as we deal with the symmetric interaction setup.
                     # memset(x, 0, sizeof(floating) * N)
                     continue
 

@@ -15,10 +15,10 @@ class GloVe(object):
     """
     """
     def __init__(self, n_components,
-                 n_iters=15, alpha=3/4., x_max=100, solver='als',
-                 l2=1e-3, learning_rate=0.1, max_loss=10., share_params=True,
-                 use_native=True, dtype=np.float32, random_state=None,
-                 num_threads=0, tokenizer=None, eps=1e-0) -> None:
+                 n_iters=15, alpha=3/4., x_max=100, beta=1e+1, eps=1e-0,
+                 solver='als', l2=1e-3, learning_rate=0.1, max_loss=10.,
+                 share_params=True, use_native=True, dtype=np.float32,
+                 random_state=None, num_threads=0, tokenizer=None) -> None:
         """
         """
         self.n_components = n_components
@@ -28,12 +28,13 @@ class GloVe(object):
         self.n_iters = n_iters
         self.alpha = alpha
         self.x_max = x_max
+        self.beta = beta
+        self.eps = eps
         self.dtype = dtype
         self.solver_type = solver
         self.use_native = use_native
         self.share_params = share_params
         self.num_threads = num_threads
-        self.eps = eps
 
         if tokenizer is None:
             logger.warning('[Warning] tokenizer is not given. '
@@ -54,7 +55,7 @@ class GloVe(object):
                               max_loss, use_native, share_params, dtype,
                               random_state, num_threads)
         elif solver == 'ials':
-            self.solver = IALS(n_components, l2, n_iters, alpha, eps,
+            self.solver = IALS(n_components, l2, n_iters, beta, eps,
                                use_native, share_params, dtype, random_state,
                                num_threads)
         else:
@@ -151,12 +152,13 @@ class GloVe(object):
             'n_iters': self.n_iters,
             'alpha': self.alpha,
             'x_max': self.x_max,
+            'beta': self.beta,
+            'eps': self.eps,
             'dtype': self.dtype,
             'solver': self.solver_type,
             'use_native': self.use_native,
             'share_params': self.share_params,
             'num_threads': self.num_threads,
-            'eps': self.eps
         }
         params = {
             'W': self.solver.embeddings_['W'],

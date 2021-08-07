@@ -152,7 +152,8 @@ setup(name=NAME,
       entry_points = {
           'console_scripts': [
               'cooccur=gloves.cli.cooccur:main',
-              'gloves=gloves.cli.main:main'
+              'gloves=gloves.cli.main:main',
+              'fittokens=gloves.cli.learntoken:main'
           ],
       },
       test_suite='tests',
