@@ -3,7 +3,7 @@ from scipy import sparse as sp
 
 from tqdm import tqdm
 from . import _ials
-from .base import SolverBase, transform
+from .base import SolverBase
 
 
 UNSEARCHABLES = {'lr', 'max_loss', 'x_max', 'alpha'}

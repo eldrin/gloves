@@ -102,20 +102,6 @@ class SolverBase(object):
         raise NotImplementedError()
 
 
-def transform(X, x_max=100, alpha=3/4., dtype=np.float32):
-    """
-    """
-    # transform target values
-    X_ = X.copy()
-    X_.data = np.log(X_.data).astype(dtype)
-
-    # prepare confidence function
-    C_ = X.copy().astype(dtype)
-    C_.data = np.minimum(1., X.data / x_max) ** alpha
-
-    return X_, C_
-
-
 def compute_error(X, E, W, H, bi, bj, *args, **kwargs):
     """
     """

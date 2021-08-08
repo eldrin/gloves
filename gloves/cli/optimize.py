@@ -1,9 +1,7 @@
 import os
 from os.path import join
 import json
-import glob
-import argparse
-from typing import Optional, TypedDict, Union
+from typing import Optional
 from functools import partial
 import logging
 
@@ -19,7 +17,6 @@ except ModuleNotFoundError:
 
 from skopt.space import Real, Integer, Categorical
 from skopt.space.space import Dimension
-from skopt.utils import use_named_args, point_asdict
 from skopt import gp_minimize
 
 import numpy as np
@@ -30,7 +27,7 @@ from gloves.evaluation import (split_data,
                                compute_similarities,
                                compute_scores,
                                EvaluationSet)
-from gloves.corpus import Corpus, load_corpus
+from gloves.corpus import load_corpus
 from gloves.utils import (load_faruqui_wordsim_evalset as load_eval_dataset,
                           init_tokenizer)
 from gloves.files import default_optimize_config

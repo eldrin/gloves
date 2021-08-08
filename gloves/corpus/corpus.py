@@ -1,12 +1,8 @@
 import os
-import json
-from os.path import exists, splitext
-from pathlib import Path
-from typing import Optional, Union, TextIO
+from os.path import exists
+from typing import Optional, Union
 import pickle as pkl
 from collections import defaultdict
-from multiprocessing import Pool
-from functools import partial
 import logging
 import mmap
 
@@ -68,7 +64,7 @@ class Corpus:
         self.mat = sp.coo_matrix(
             (data['mat']['counts'], (data['mat']['row'], data['mat']['col'])),
             shape = (self.n_tokens, self.n_tokens),
-            dtype=self.dtype
+            dtype = self.dtype
         )
         self.window_size = data['window_size']
         self.uniform_count = data['uniform_count']
@@ -92,12 +88,6 @@ class Corpus:
                 },
                 fp
             )
-
-        logger.info('Saving tokenizer separately...')
-        rest, ext = splitext(out_fn)
-        tokenizer_fn = rest + '.tokenizer'
-        with open(tokenizer_fn, 'w') as fp:
-            fp.write(self._tokenizer.to_str())
 
 
 def compute_cooccurrence(path_or_lines: Union[str, list[str]],
@@ -126,7 +116,6 @@ def compute_cooccurrence(path_or_lines: Union[str, list[str]],
     if verbose:
         # get the line number of the text to check progress
         if is_text_file:
-            # num_lines = Path(path_or_lines).stat().st_size
             num_lines = count_lines(path_or_lines)
         else:
             num_lines = len(lines)

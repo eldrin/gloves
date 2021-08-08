@@ -1,8 +1,6 @@
 import os
 from os.path import join, basename, splitext
-from functools import partial
 from typing import Optional
-from collections import defaultdict
 import argparse
 import logging
 import multiprocessing as mp
@@ -159,11 +157,14 @@ def merge_cooccur(args):
     if not args.quiet:
         logger.setLevel(logging.INFO)
 
-    merged = dict.fromkeys(['mat', 'window_size', 'uniform_count'])
+    merged = dict.fromkeys(['mat', 'tokenizer', 'window_size', 'uniform_count'])
     with tqdm(total=len(args.cooccurfiles), ncols=80, disable=args.quiet) as prog:
         for file in args.cooccurfiles:
             # load the data
             corpus = load_corpus(file)
+
+            if merged['tokenizer'] is None:
+                merged['tokenizer'] = corpus._tokenizer.to_str()
 
             if merged['window_size'] is None:
                 merged['window_size'] = corpus.window_size
@@ -194,6 +195,7 @@ def merge_cooccur(args):
                     'col': merged['mat'].col,
                     'counts': merged['mat'].data
                 },
+                'tokenizer': merged['tokenizer'],
                 'uniform_count': merged['uniform_count'],
                 'window_size': merged['window_size']
             },

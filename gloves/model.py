@@ -1,11 +1,10 @@
 import logging
 import pickle as pkl
 import numpy as np
-from scipy import sparse as sp
 from scipy.spatial.distance import cdist
 
 from .solvers import ALS, SGD, IALS
-from .utils import is_symmetric, argpart_sort, init_tokenizer
+from .utils import argpart_sort, init_tokenizer
 
 
 logger = logging.getLogger('GloVeModel')
@@ -173,7 +172,8 @@ class GloVe(object):
         with open(out_fn, 'wb') as fp:
             pkl.dump({
                 'configs': configs,
-                'params': params
+                'params': params,
+                'tokenizer': self._tokenizer.to_str()
             }, fp)
 
     @classmethod
@@ -182,6 +182,7 @@ class GloVe(object):
         """
         with open(fn, 'rb') as fp:
             saved = pkl.load(fp)
-            new_glove = cls(**saved['configs'])
+            tokenizer = init_tokenizer(dump_str=saved['tokenizer'])
+            new_glove = cls(tokenizer=tokenizer, **saved['configs'])
         new_glove.solver.embeddings_ = saved['params']
         return new_glove
