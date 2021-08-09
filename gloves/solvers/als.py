@@ -22,9 +22,8 @@ class ALS(SolverBase):
         """
         """
         # force to convert
-        X = X.astype(self.dtype)
         if not sp.isspmatrix_csr(X):
-            X = X.tocsr()
+            X = X.tocsr(copy=False)
 
         # initialize parameters
         N = X.shape[0]
@@ -39,7 +38,9 @@ class ALS(SolverBase):
             self.embeddings_.update(dict(H=H, bj=bj))
 
         # compute error matrix
-        E = X.copy().astype('float32')
+        # TODO: we may be able to save lots of memory by only copying "data" field
+        #       as coordinate infor is identical to "X/C"
+        E = X.astype('float32', copy=True)
         self.compute_error(X, E,
                            self.embeddings_['W'], self.embeddings_['H'],
                            self.embeddings_['bi'], self.embeddings_['bj'],

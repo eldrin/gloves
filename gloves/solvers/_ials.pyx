@@ -72,12 +72,13 @@ def _least_squares_cg(integral[:] indptr, integral[:] indices, float[:] data,
                       int num_threads=0, int cg_steps=3):
     dtype = np.float64 if floating is double else np.float32
 
-    cdef integral users = X.shape[0], u, i, index
+    cdef integral users = X.shape[0], u, i, index, shuf_idx
     cdef int one = 1, it, N = X.shape[1]
     cdef floating confidence, temp, alpha, rsnew, rsold
     cdef floating zero = 0.
 
     cdef floating[:, :] YtY = np.dot(np.transpose(Y), Y) + regularization * np.eye(N, dtype=dtype)
+    cdef integral[:] rnd_idx = np.random.permutation(users).astype('int32')
 
     cdef floating * x
     cdef floating * p
@@ -90,7 +91,12 @@ def _least_squares_cg(integral[:] indptr, integral[:] indices, float[:] data,
         p = <floating *> malloc(sizeof(floating) * N)
         r = <floating *> malloc(sizeof(floating) * N)
         try:
-            for u in prange(users, schedule='guided'):
+            for shuf_idx in prange(users, schedule='guided'):
+                # get index
+                # NOTD: another addition, statistically may make the
+                #       multi-thread planning better
+                u = rnd_idx[shuf_idx]
+
                 # start from previous iteration
                 x = &X[u, 0]
 

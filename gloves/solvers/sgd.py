@@ -34,7 +34,7 @@ class SGD(SolverBase):
         """
         # force to convert
         if not sp.isspmatrix_coo(X):
-            X = X.tocoo()
+            X = X.tocoo(copy=False)
 
         # initialize parameters
         N = X.shape[0]

@@ -36,13 +36,18 @@ def _eals_update(integral[:] indptr, integral[:] indices,
     """
     dtype = np.float64 if floating is double else np.float32
 
-    cdef integral N  = W.shape[0], i, j, k, index
+    cdef integral N  = W.shape[0], i, j, k, index, shuf_idx
     cdef int d = W.shape[1]
     cdef floating a, b, wik, hjk, cij, bii, one = 1.
 
+    cdef integral[:] rnd_idx = np.random.permutation(N).astype('int32')
+
     with nogil, parallel(num_threads=num_threads):
         try:
-            for i in prange(N, schedule='dynamic'):
+            for shuf_idx in prange(N, schedule='dynamic'):
+                # get random index
+                i = rnd_idx[shuf_idx]
+
                 if indptr[i] == indptr[i+1]:
                     # TODO: should we set 0s for this case similarly to implicit?
                     continue
