@@ -36,10 +36,6 @@ def parse_arguments():
                                 help=('number of cores to be used for the parallelism. '
                                       'only used for `optimize` and `train`'))
 
-    base_subparser.add_argument('-k', '--tokenizer', type=str, default=None,
-                                help=('path for the tokenizer dump (.json)',
-                                      "if not given, uses the default tokenizer of the package"))
-
     # `optimize` sub command =================================================
     optimize = subparsers.add_parser('optimize',
                                       parents=[base_subparser],
@@ -139,8 +135,6 @@ def main():
 
         # load model
         glove = GloVe.from_file(args.model)
-        tokenizer = init_tokenizer(path=args.tokenizer)
-        glove.set_tokenizer(tokenizer)
 
         valid = load_faruqui_wordsim_evalset()
         preds = compute_similarities(glove, tokenizer, valid,
