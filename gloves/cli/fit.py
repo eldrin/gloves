@@ -74,7 +74,6 @@ def fit(args):
         num_threads: control parallelization (num cores)
         quiet: set verbosity
     """
-    tokenizer = init_tokenizer(args.tokenizer)
     corpus = load_corpus(args.data)
     glove = GloVe(n_components  = args.n_components,
                   n_iters       = args.n_iters,
@@ -88,7 +87,7 @@ def fit(args):
                   max_loss      = 10.,  # max loss. use defaults
                   share_params  = args.share_params,
                   num_threads   = args.num_threads,
-                  tokenizer     = tokenizer)
+                  tokenizer     = corpus._tokenizer)
     glove.fit(corpus.mat, verbose=not args.quiet)
 
     # save the results to disk
