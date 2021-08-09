@@ -137,8 +137,8 @@ def main():
         glove = GloVe.from_file(args.model)
 
         valid = load_faruqui_wordsim_evalset()
-        preds = compute_similarities(glove, tokenizer, valid,
-                                     tokenizer.get_vocab())
+        preds = compute_similarities(glove, glove._tokenizer, valid,
+                                     glove._tokenizer.get_vocab())
         scores = compute_scores(valid, preds)
         score = sum([v['corr'] for k, v in scores.items()]) / len(scores)
 
