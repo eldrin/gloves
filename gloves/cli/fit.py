@@ -74,7 +74,7 @@ def fit(args):
         num_threads: control parallelization (num cores)
         quiet: set verbosity
     """
-    corpus = load_corpus(args.data)
+    corpus = load_corpus(args.corpus)
     glove = GloVe(n_components  = args.n_components,
                   n_iters       = args.n_iters,
                   alpha         = args.alpha,

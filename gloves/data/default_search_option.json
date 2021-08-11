@@ -1,6 +1,5 @@
 {
     "ranges": {
-        "window_size_factor2": {"type": "integer", "low": 2,    "high": 7,    "prior": null},
         "n_components_log2":   {"type": "integer", "low": 4,    "high": 9,    "prior": null},
         "n_iters":             {"type": "integer", "low": 10,   "high": 120,  "prior": null},
         "alpha":               {"type": "real",    "low": 0.5,  "high": 1,    "prior": "uniform"},
@@ -13,11 +12,11 @@
         "solver":              {"type": "categorical", "categories": ["ials", "als", "sgd"]}
     },
     "defaults": {
-        "window_size_factor2": 6,
         "n_components_log2":   5,
         "n_iters":             15,
         "alpha":               0.75,
         "x_max":               100,
+        "alpha":               1,
         "eps":                 1e+1,
         "l2":                  1e-8,
         "lr":                  1e-2,
@@ -25,7 +24,6 @@
         "solver":              "sgd"
     },
     "search_targets": [
-        "window_size_factor2",
         "n_components_log2",
         "n_iters",
         "alpha",

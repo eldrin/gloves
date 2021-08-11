@@ -43,7 +43,6 @@ if RAND_STATE is not None:
 
 
 FULL_DIMENSIONS = [
-    'window_size_factor2',
     'n_components_log2',
     'n_iters',
     'alpha',
@@ -57,13 +56,15 @@ FULL_DIMENSIONS = [
 ]
 
 
-def read_optimize_config(config_fn: Optional[str]=None,
+def read_optimize_config(corpus_fns: list[str],
+                         config_fn: Optional[str]=None,
                          use_package_default: bool=False) -> list[Dimension]:
     """
     NOTE: currently, window size is not optional and will be added if not given
           also, the range and the interval also are fixed.
 
     arguments:
+        corpus_fns: corpus files to be optimized. (i.e., different window sizes)
         config_fn: filename (path) to the custom search config file
                    if not given, using default config
         use_package_default: if True, uses factory defaults for any MISSING params
@@ -80,7 +81,6 @@ def read_optimize_config(config_fn: Optional[str]=None,
         default_config = json.load(f)
 
     # TODO: data validation step
-
     search_space = []
     defaults = {}
     search_targets = set(config['search_targets'])
@@ -88,11 +88,6 @@ def read_optimize_config(config_fn: Optional[str]=None,
         logger.warning("'solver' is included in search targets. "
                        "it will make the search process very inefficient. "
                        "consider increasing the number of calls.")
-
-    if 'window_size_factor2' not in search_targets:
-        logger.warning("'window_size_factor2' is not included, which currently "
-                       "is not an optional one. We're adding default range...")
-        search_targets.add('window_size_factor2')
 
     for name in FULL_DIMENSIONS:
 
@@ -102,14 +97,9 @@ def read_optimize_config(config_fn: Optional[str]=None,
 
             # if not specified, falls back to the package-wide default
             if default is None or use_package_default:
-
                 if use_package_default:
                     default = default_config['defaults'][name]
-
-            if name in 'window_size_factor2':
-                defaults[name] = 2 * default - 1
-            else:
-                defaults[name] = default
+            defaults[name] = default
 
         # fill the space container if we need to learn them
         else:
@@ -142,17 +132,18 @@ def read_optimize_config(config_fn: Optional[str]=None,
         else:
             raise ValueError('[ERROR] only `als` and `sgd` solver are supported!')
 
+    # add search space for data files
+    search_space.append(Categorical(corpus_fns, name='corpora'))
+
     return search_space, defaults
 
 
-def prep_dataset(window_size_factor2: int,
-                 data_fns: list[str],
+def prep_dataset(corpus_fn: list[str],
                  eval_type: str) -> tuple[sp.coo_matrix, EvaluationSet]:
     """
     """
     # load data
-    win_sz = window_size_factor2 * 2 - 1
-    corpus = load_corpus(data_fns[win_sz])
+    corpus = load_corpus(corpus_fn)
 
     # prepare the evaluation
     if eval_type == 'split':
@@ -168,7 +159,6 @@ def prep_dataset(window_size_factor2: int,
 
 def _objective(params: dict,
                fixed_params: dict,
-               data_fns: list[str],
                search_space: list[Dimension],
                eval_type: str,
                num_threads: int=1,
@@ -180,8 +170,7 @@ def _objective(params: dict,
     params.update(fixed_params)
 
     # prep data and fit the model
-    train, valid, tokenizer = prep_dataset(params['window_size_factor2'],
-                                           data_fns,
+    train, valid, tokenizer = prep_dataset(params['corpora'],
                                            eval_type)
     glove = fit_model(train,
                       num_threads=num_threads,
@@ -223,22 +212,13 @@ def optimize(args):
                                 (for various window sizes)
     """
     # load the config
-    search_space, defaults = read_optimize_config(args.config)
+    search_space, defaults = read_optimize_config(args.corpora, args.config)
 
     # load data filenames
-    # TODO: this part is actually pain in the back (in usability perspective)
-    #       although computing cooccurrence on the fly is too much inefficient
-    fn_tmp = args.data_filename_template
-    fns = {
-        i:join(args.data_path, fn_tmp.format(window_size=i))
-        for i in range(3, 15, 2)
-    }
-
     res_gp = gp_minimize(
         partial(_objective,
                 fixed_params=defaults,
                 search_space=search_space,
-                data_fns=fns,
                 eval_type=args.eval_set,
                 num_threads=args.num_threads),
         search_space,
@@ -257,8 +237,7 @@ def optimize(args):
     params.update(defaults)
 
     # load data and fit the model
-    win_sz = params['window_size_factor2'] * 2 - 1
-    corpus = load_corpus(fns[win_sz])
+    corpus = load_corpus(params['corpora'])
     glove = fit_model(corpus.mat,
                       num_threads=args.num_threads,
                       tokenizer=corpus._tokenizer,

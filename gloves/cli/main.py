@@ -41,8 +41,8 @@ def parse_arguments():
                                       parents=[base_subparser],
                                       help='hyper-parameter search for GloVe models')
 
-    optimize.add_argument('data_path', type=str,
-                          help='path for the dir contains pre-processed datasets')
+    optimize.add_argument('corpora', type=str, nargs='+',
+                          help='pre-processed corpus dataset(s)')
 
     optimize.add_argument('--config', type=str, default=None,
                           help='path for the configuration file')
@@ -54,16 +54,12 @@ def parse_arguments():
     optimize.add_argument('--eval-set', type=str, default='faruqui',
                           choices={'split', 'faruqui'})
 
-    optimize.add_argument('--data-filename-template', type=str,
-                          default='corpus_ws{window_size:d}.cooccur.pkl',
-                          help='dataset filename template')
-
     # `train` sub command =================================================
     train = subparsers.add_parser('train',
                                   parents=[base_subparser],
                                   help='train a GloVe model')
 
-    train.add_argument('data', type=str,
+    train.add_argument('corpus', type=str,
                        help='path for the pre-processed cooccurrence dataset')
 
     train.add_argument('--n-components', type=int, default=32,
