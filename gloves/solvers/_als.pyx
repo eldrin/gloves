@@ -6,22 +6,22 @@ from cython.parallel import parallel, prange
 from tqdm import tqdm
 
 from libc.stdlib cimport free, malloc
-from libc.string cimport memcpy
+from libc.string cimport memcpy, memset
 from libc.math cimport log, sqrt, fmin
 
 import numpy as np
+from scipy import sparse as sp
 
 
 cdef inline floating c_min(floating a, floating b) nogil:
     return a if a <= b else b
 
 
-def eals_update(X, E, W, H, bi, regularization, alpha, x_max, num_threads=0):
+def eals_update(X, e_data, W, H, bi, regularization, alpha, x_max, num_threads=0):
     """
     """
     return _eals_update(X.indptr, X.indices,
-                        X.data.astype('float32'),
-                        E.data,
+                        X.data.astype('float32'), e_data,
                         W, H, bi, regularization, alpha, x_max, num_threads)
 
 
@@ -96,12 +96,11 @@ def _eals_update(integral[:] indptr, integral[:] indices,
             # free(x)
 
 
-def compute_error(X, E, W, H, bi, bj, num_threads=0):
+def compute_error(X, e_data, W, H, bi, bj, num_threads=0):
     """
     """
     return _compute_error(X.indptr, X.indices,
-                          X.data.astype('float32'),
-                          E.data,
+                          X.data.astype('float32'), e_data,
                           W, H, bi, bj, num_threads=num_threads)
 
 @cython.cdivision(True)
@@ -131,3 +130,85 @@ def _compute_error(integral[:] indptr, integral[:] indices,
                     error[index] -= bi[i] + bj[j]
         finally:
             pass
+
+
+
+def csr_tocsc(X, e_data):
+    """
+    """
+    # new containers
+    new_indptr = np.empty(X.shape[1] + 1, dtype=X.indptr.dtype)
+    new_indices = np.empty(X.nnz, dtype=X.indptr.dtype)
+    new_x_data = np.empty(X.nnz, dtype=X.dtype)
+    new_e_data = np.empty(X.nnz, dtype=X.dtype)
+
+    _csr_tocsc(X.shape[0], X.shape[1],
+               X.indptr, X.indices, X.data, e_data,
+               new_indptr, new_indices, new_x_data, new_e_data)
+
+    A = sp.csc_matrix((new_x_data, new_indices, new_indptr), shape=X.shape)
+    A.has_sorted_indices = True
+    return A, new_e_data
+
+
+def csc_tocsr(X, e_data):
+    """
+    """
+    # new containers
+    new_indptr = np.empty(X.shape[0] + 1, dtype=X.indptr.dtype)
+    new_indices = np.empty(X.nnz, dtype=X.indptr.dtype)
+    new_x_data = np.empty(X.nnz, dtype=X.dtype)
+    new_e_data = np.empty(X.nnz, dtype=X.dtype)
+
+    _csr_tocsc(X.shape[1], X.shape[0],
+               X.indptr, X.indices, X.data, e_data,
+               new_indptr, new_indices, new_x_data, new_e_data)
+
+    A = sp.csr_matrix((new_x_data, new_indices, new_indptr), shape=X.shape)
+    A.has_sorted_indices = True
+    return A, new_e_data
+
+
+
+@cython.cdivision(True)
+@cython.boundscheck(False)
+def _csr_tocsc(int n_rows, int n_cols,
+               integral[:] Ap, integral[:] Aj, floating[:] Ax, floating[:] Ae,
+               integral[:] Bp, integral[:] Bi, floating[:] Bx, floating[:] Be):
+    """ re-implementation of scipy C++ source:
+        https://github.com/scipy/scipy/blob/e4b3e6eb372b8c1d875f2adf607630a31e2a609c/scipy/sparse/sparsetools/csr.h#L418
+    """
+    cdef int nnz = len(Aj), col, row, jj, n, temp, last, cumsum
+
+    # compute number of non-zero entries per column of A
+    memset(&Bp[0], 0, sizeof(floating) * len(Bp))
+
+    for n in range(nnz):
+        Bp[Aj[n]] += 1
+        # Bp[Aj[n]] = Bp[Aj[n]] + 1
+
+    # cumsum the nnz per column to get Bp[]
+    cumsum = 0
+    for col in range(n_cols):
+        temp = Bp[col]
+        Bp[col] = cumsum
+        cumsum = cumsum + temp
+    Bp[n_cols] = nnz
+
+    for row in range(n_rows):
+        for jj in range(Ap[row], Ap[row+1]):
+            col = Aj[jj]
+            dest = Bp[col]
+
+            Bi[dest] = row
+            Bx[dest] = Ax[jj]
+            Be[dest] = Ae[jj]
+
+            Bp[col] += 1
+            # Bp[col] = Bp[col] + 1
+
+    last = 0
+    for col in range(n_cols + 1):
+        temp = Bp[col]
+        Bp[col] = last
+        last = temp

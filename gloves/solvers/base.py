@@ -102,10 +102,10 @@ class SolverBase(object):
         raise NotImplementedError()
 
 
-def compute_error(X, E, W, H, bi, bj, *args, **kwargs):
+def compute_error(X, e_data, W, H, bi, bj, *args, **kwargs):
     """
     """
-    return _compute_error(X.data, E.data, X.indices, X.indptr, W, H, bi, bj)
+    return _compute_error(X.data, e_data, X.indices, X.indptr, W, H, bi, bj)
 
 
 def _compute_error(data, error, indices, indptr, W, H, bi, bj):

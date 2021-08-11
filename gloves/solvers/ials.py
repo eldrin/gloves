@@ -24,9 +24,8 @@ class IALS(SolverBase):
         """
         """
         # force to convert
-        X = X.astype(self.dtype)
         if not sp.isspmatrix_csr(X):
-            X = X.tocsr()
+            X = X.tocsr(copy=False)
         X.data = 1. + self.beta * np.log((X.data / self.eps) + 1.)
 
         # initialize parameters

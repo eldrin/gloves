@@ -32,8 +32,6 @@ from gloves.utils import (load_faruqui_wordsim_evalset as load_eval_dataset,
                           init_tokenizer)
 from gloves.files import default_optimize_config
 
-from tokenizers import Tokenizer
-
 from .fit import fit_model
 
 
@@ -165,7 +163,7 @@ def prep_dataset(window_size_factor2: int,
         train = corpus.mat
         valid = load_eval_dataset()
 
-    return train, valid
+    return train, valid, corpus._tokenizer
 
 
 def _objective(params: dict,
@@ -173,7 +171,6 @@ def _objective(params: dict,
                data_fns: list[str],
                search_space: list[Dimension],
                eval_type: str,
-               tokenizer: Tokenizer,
                num_threads: int=1,
                failure_score: float = 1e+3) -> float:
     """
@@ -183,8 +180,9 @@ def _objective(params: dict,
     params.update(fixed_params)
 
     # prep data and fit the model
-    train, valid = prep_dataset(params['window_size_factor2'],
-                                data_fns, eval_type)
+    train, valid, tokenizer = prep_dataset(params['window_size_factor2'],
+                                           data_fns,
+                                           eval_type)
     glove = fit_model(train,
                       num_threads=num_threads,
                       tokenizer=tokenizer,
@@ -224,9 +222,6 @@ def optimize(args):
         data_filename_template: dataset filename template
                                 (for various window sizes)
     """
-    # initialize tokenizer
-    tokenizer = init_tokenizer(args.tokenizer)
-
     # load the config
     search_space, defaults = read_optimize_config(args.config)
 
@@ -245,8 +240,7 @@ def optimize(args):
                 search_space=search_space,
                 data_fns=fns,
                 eval_type=args.eval_set,
-                num_threads=args.num_threads,
-                tokenizer=tokenizer),
+                num_threads=args.num_threads),
         search_space,
         n_calls=args.n_calls,
         random_state=RAND_STATE,
@@ -267,7 +261,7 @@ def optimize(args):
     corpus = load_corpus(fns[win_sz])
     glove = fit_model(corpus.mat,
                       num_threads=args.num_threads,
-                      tokenizer=tokenizer,
+                      tokenizer=corpus._tokenizer,
                       **params)
 
     # save the results to disk

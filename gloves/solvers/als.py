@@ -40,8 +40,8 @@ class ALS(SolverBase):
         # compute error matrix
         # TODO: we may be able to save lots of memory by only copying "data" field
         #       as coordinate infor is identical to "X/C"
-        E = X.astype('float32', copy=True)
-        self.compute_error(X, E,
+        e_data = X.data.copy().astype('float32')
+        self.compute_error(X, e_data,
                            self.embeddings_['W'], self.embeddings_['H'],
                            self.embeddings_['bi'], self.embeddings_['bj'],
                            num_threads=self.num_threads)
@@ -51,23 +51,21 @@ class ALS(SolverBase):
         with tqdm(total=self.n_iters, ncols=80, disable=not verbose) as prog:
             for n in range(self.n_iters):
 
-                self.solver(X, E,
+                self.solver(X, e_data,
                             self.embeddings_['W'],
                             self.embeddings_['H'].copy(),
                             self.embeddings_['bi'],
                             self.l2, self.alpha, self.x_max,
                             num_threads=self.num_threads)
-                X = X.T.tocsr()
-                E = E.T.tocsr()
+                X, e_data = _als.csr_tocsc(X, e_data)
 
-                self.solver(X, E,
+                self.solver(X, e_data,
                             self.embeddings_['H'],
                             self.embeddings_['W'].copy(),
                             self.embeddings_['bj'],
                             self.l2, self.alpha, self.x_max,
                             num_threads=self.num_threads)
-                X = X.T.tocsr()
-                E = E.T.tocsr()
+                X, e_data = _als.csc_tocsr(X, e_data)
 
                 if self._is_unhealthy():
                     print('[ERROR] Training failed! nan or inf found')
