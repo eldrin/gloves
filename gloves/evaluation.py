@@ -51,7 +51,8 @@ def split_data(coo, train_ratio=0.8, valid_ratio=0.5, to_csr=True):
 def compute_similarities(glove: GloVe,
                          tokenizer: Tokenizer,
                          eval_set: EvaluationSet,
-                         token_inv_map: dict[str, int]) -> Predictions:
+                         token_inv_map: dict[str, int],
+                         score_method: str='cosine') -> Predictions:
     """
     """
     eps = 1e-20
@@ -59,7 +60,8 @@ def compute_similarities(glove: GloVe,
     W = glove.embeddings_['W']
 
     # normalized embeddings for computing cosine distance easily
-    W = W / (np.linalg.norm(W, axis=1)[:, None] + eps)
+    if score_method == 'cosine':
+        W = W / (np.linalg.norm(W, axis=1)[:, None] + eps)
 
     predictions = {}
     for dataset, ratings in eval_set.items():

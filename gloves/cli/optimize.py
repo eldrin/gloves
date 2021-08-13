@@ -162,7 +162,8 @@ def _objective(params: dict,
                search_space: list[Dimension],
                eval_type: str,
                num_threads: int=1,
-               failure_score: float = 1e+3) -> float:
+               failure_score: float=1e+3,
+               score_method: str='cosine') -> float:
     """
     """
     params = {dim.name: param for dim, param in zip(search_space, params)}
@@ -188,7 +189,8 @@ def _objective(params: dict,
         score = -glove.score(valid, weighted=False)  # MSE (the lower the better)
     else:
         predictions = compute_similarities(glove, tokenizer, valid,
-                                           tokenizer.get_vocab())
+                                           tokenizer.get_vocab(),
+                                           score_method)
         scores = compute_scores(valid, predictions)
         score = np.mean([v['corr'] for k, v in scores.items()])
 
@@ -220,7 +222,8 @@ def optimize(args):
                 fixed_params=defaults,
                 search_space=search_space,
                 eval_type=args.eval_set,
-                num_threads=args.num_threads),
+                num_threads=args.num_threads,
+                score_method=args.score),
         search_space,
         n_calls=args.n_calls,
         random_state=RAND_STATE,

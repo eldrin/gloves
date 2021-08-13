@@ -89,7 +89,7 @@ class GloVe(object):
         """
         return self.solver.score(X, weighted)
 
-    def most_similar(self, word, topn=5):
+    def most_similar(self, word, topn=5, method='cosine'):
         """ Find most close words based on the cosine-distance
 
         Currently it finds the exact neighbors, which means it
@@ -109,14 +109,20 @@ class GloVe(object):
 
         # aliasing.
         emb = self.solver.embeddings_['W']
-        word_vec = emb[word_id][None]
+        word_vec = emb[word_id]
 
         # not normalized by the query word vector, but irrelevant for computing ranking
-        cos_sim = 1 - cdist(word_vec, emb, 'cosine')[0]
-        neighbors = argpart_sort(cos_sim, topn, ascending=False)
+        if method == 'cosine':
+            score = 1 - cdist(word_vec[None], emb, 'cosine')[0]
+        elif method == 'score':
+            score = word_vec @ emb.T
+        else:
+            raise ValueError('[ERROR] only `cosine` and `score` are supported!')
+
+        neighbors = argpart_sort(score, topn, ascending=False)
 
         return [
-            (self._tokenizer.decode([neighbor]), cos_sim[neighbor])
+            (self._tokenizer.decode([neighbor]), score[neighbor])
             for neighbor in neighbors
         ]
 

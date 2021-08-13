@@ -36,6 +36,11 @@ def parse_arguments():
                                 help=('number of cores to be used for the parallelism. '
                                       'only used for `optimize` and `train`'))
 
+    base_subparser.add_argument('-s', '--score', type=str, default='cosine',
+                                choices={'cosine', 'score'},
+                                help=('scoring method to be used to evaluate. '
+                                      'only used for `optimize` and `evaluate`'))
+
     # `optimize` sub command =================================================
     optimize = subparsers.add_parser('optimize',
                                       parents=[base_subparser],
@@ -134,7 +139,8 @@ def main():
 
         valid = load_faruqui_wordsim_evalset()
         preds = compute_similarities(glove, glove._tokenizer, valid,
-                                     glove._tokenizer.get_vocab())
+                                     glove._tokenizer.get_vocab(),
+                                     args.score)
         scores = compute_scores(valid, preds)
         score = sum([v['corr'] for k, v in scores.items()]) / len(scores)
 

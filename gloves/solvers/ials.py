@@ -46,11 +46,11 @@ class IALS(SolverBase):
 
                 self.solver(X, self.embeddings_['W'], self.embeddings_['H'].copy(),
                             self.l2, num_threads=self.num_threads)
-                X = X.T.tocsr()
+                X = X.tocsc()
 
                 self.solver(X, self.embeddings_['H'], self.embeddings_['W'].copy(),
                             self.l2, num_threads=self.num_threads)
-                X = X.T.tocsr()
+                X = X.tocsr()
 
                 if self._is_unhealthy():
                     print('[ERROR] Training failed! nan or inf found')
