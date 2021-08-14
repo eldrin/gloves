@@ -142,7 +142,7 @@ class GloVe(object):
     def get_vector(self, word: str) -> Optional[np.ndarray]:
         """
         """
-        index = self._tokenizer.get_id(word)
+        index = self.get_id(word)
         if index is not None:
             return self.solver.embeddings_['W'][index]
         else:
