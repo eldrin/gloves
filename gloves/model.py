@@ -1,3 +1,4 @@
+from typing import Optional
 import logging
 import pickle as pkl
 import numpy as np
@@ -138,13 +139,23 @@ class GloVe(object):
         else:
             return tok.ids[0]
 
-    def encode(self, word_or_sentence):
+    def get_vector(self, word: str) -> Optional[np.ndarray]:
+        """
+        """
+        index = self._tokenizer.get_id(word)
+        if index is not None:
+            return self.solver.embeddings_['W'][index]
+        else:
+            return None
+
+    def encode(self, word_or_sentence: str) -> tuple[np.ndarray, list[int]]:
         """
         TODO: check whether the output is too weird or not
               (i.e., by checking every tokens are trivial such as alphabets)
         """
         tok = self._tokenizer.encode(word_or_sentence)
-        return self.solver.embeddings_['W'][tok.ids]
+        ids = tok.ids
+        return self.solver.embeddings_['W'][ids], ids
 
     def save(self, out_fn):
         """
