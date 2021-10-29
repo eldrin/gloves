@@ -63,7 +63,7 @@ class SolverBase(object):
 
         # compute errors
         E_ = X_.copy()
-        self.compute_error(X_, E_,
+        self.compute_error(X_, E_.data,
                            self.embeddings_['W'], self.embeddings_['H'],
                            self.embeddings_['bi'], self.embeddings_['bj'])
 
