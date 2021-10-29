@@ -62,17 +62,17 @@ class SolverBase(object):
         X_, C_ = transform(X, self.x_max, self.alpha, self.dtype)
 
         # compute errors
-        E_ = X_.copy()
-        self.compute_error(X_, E_.data,
+        e_data = X_.data.copy()
+        self.compute_error(X, e_data,
                            self.embeddings_['W'], self.embeddings_['H'],
                            self.embeddings_['bi'], self.embeddings_['bj'])
 
         if weighted:
             # weighted mean squared error
-            return np.mean(C_.data * (E_.data)**2)
+            return np.mean(C_.data * (e_data)**2)
         else:
             # uniform mse
-            return np.mean((E_.data)**2)
+            return np.mean((e_data)**2)
 
     def _is_unhealthy(self) -> bool:
         """
