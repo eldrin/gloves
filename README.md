@@ -9,7 +9,7 @@ Implementation of [GloVe](https://github.com/stanfordnlp/GloVe) using 2 optimiza
 Currently, installing via `github` and `pip` is the only way at the moment.
 
 ```bash
-pip install git+https://github.com/eldrin/glove-als.git@master
+pip install git+https://github.com/eldrin/gloves.git@master
 ```
 
 ## Minimal Example
@@ -54,8 +54,9 @@ Unlike the (stochastic) gradient descent method, ALS generally converges in a co
 
 - [ ] writing test
 - [ ] adding feature
-  - [ ] `.most_similar` method
-  - [ ] utility to convert embedding to `gensim` model?
+  - [x] `.most_similar` method
+  - [x] utility to convert embedding to `gensim` model?
+  - [ ] utility to generate `cooccur` dataset with different window length (for `optimize`)
 - [ ] benchmark (vs. [`glove-python`](https://github.com/maciejkula/glove-python))
 
 
