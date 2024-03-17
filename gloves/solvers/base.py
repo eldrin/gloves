@@ -62,17 +62,17 @@ class SolverBase(object):
         X_, C_ = transform(X, self.x_max, self.alpha, self.dtype)
 
         # compute errors
-        E_ = X_.copy()
-        self.compute_error(X_, E_,
+        e_data = X_.data.copy()
+        self.compute_error(X, e_data,
                            self.embeddings_['W'], self.embeddings_['H'],
                            self.embeddings_['bi'], self.embeddings_['bj'])
 
         if weighted:
             # weighted mean squared error
-            return np.mean(C_.data * (E_.data)**2)
+            return np.mean(C_.data * (e_data)**2)
         else:
             # uniform mse
-            return np.mean((E_.data)**2)
+            return np.mean((e_data)**2)
 
     def _is_unhealthy(self) -> bool:
         """
@@ -100,6 +100,20 @@ class SolverBase(object):
 
     def fit(self, X, verbose=True, compute_loss=False):
         raise NotImplementedError()
+
+
+def transform(X, x_max=100, alpha=3/4., dtype=np.float32):
+    """
+    """
+    # transform target values
+    X_ = X.copy()
+    X_.data = np.log(X_.data).astype(dtype)
+
+    # prepare confidence function
+    C_ = X.copy().astype(dtype)
+    C_.data = np.minimum(1., X.data / x_max) ** alpha
+
+    return X_, C_
 
 
 def compute_error(X, e_data, W, H, bi, bj, *args, **kwargs):
