@@ -1,4 +1,4 @@
 numpy>=1.15
 scipy>=1.5.2
 tqdm>=4.36.1
-tokenizers==0.10.3
+tokenizers==0.15.2
